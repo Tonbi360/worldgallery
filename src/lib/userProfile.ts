@@ -1,5 +1,6 @@
 import { GalleryMember, ContactBridge } from '../types/gallery';
 import { ContactChannelType, RESERVED_SYSTEM_HANDLES } from '../types/apply';
+import { sanitizeText, sanitizeStringArray } from './security';
 
 export const CURRENT_USER_STORAGE_KEY = 'wg_current_user_profile';
 export const USER_PROFILE_UPDATE_EVENT = 'wg_user_profile_updated';
@@ -20,13 +21,30 @@ export const DEFAULT_CURRENT_USER: GalleryMember = {
   bridges: [],
 };
 
+export function sanitizeMember(member: GalleryMember): GalleryMember {
+  return {
+    ...member,
+    fullName: sanitizeText(member.fullName),
+    handle: sanitizeText(member.handle).toLowerCase().replace(/^@/, ''),
+    location: sanitizeText(member.location),
+    bio: sanitizeText(member.bio),
+    tags: sanitizeStringArray(member.tags),
+    bridges: member.bridges?.map((b) => ({
+      ...b,
+      label: sanitizeText(b.label),
+      maskedHint: sanitizeText(b.maskedHint),
+      unmaskedValue: b.unmaskedValue ? sanitizeText(b.unmaskedValue) : undefined,
+    })),
+  };
+}
+
 export function getCurrentUserProfile(): GalleryMember {
   if (typeof window === 'undefined') return DEFAULT_CURRENT_USER;
   try {
     const stored = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return { ...DEFAULT_CURRENT_USER, ...parsed };
+      return sanitizeMember({ ...DEFAULT_CURRENT_USER, ...parsed });
     }
   } catch (err) {
     console.error('Failed to parse current user profile:', err);
@@ -37,8 +55,9 @@ export function getCurrentUserProfile(): GalleryMember {
 export function saveCurrentUserProfile(profile: GalleryMember): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(profile));
-    window.dispatchEvent(new CustomEvent(USER_PROFILE_UPDATE_EVENT, { detail: profile }));
+    const sanitized = sanitizeMember(profile);
+    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(sanitized));
+    window.dispatchEvent(new CustomEvent(USER_PROFILE_UPDATE_EVENT, { detail: sanitized }));
   } catch (err) {
     console.error('Failed to save current user profile:', err);
     throw err;
@@ -48,7 +67,8 @@ export function saveCurrentUserProfile(profile: GalleryMember): void {
 export function saveAllGalleryMembers(members: GalleryMember[]): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(ALL_MEMBERS_STORAGE_KEY, JSON.stringify(members));
+    const sanitized = members.map(sanitizeMember);
+    localStorage.setItem(ALL_MEMBERS_STORAGE_KEY, JSON.stringify(sanitized));
     window.dispatchEvent(new CustomEvent(USER_PROFILE_UPDATE_EVENT));
   } catch (err) {
     console.error('Failed to save all gallery members:', err);
@@ -81,7 +101,7 @@ export function getAllGalleryMembers(): GalleryMember[] {
     if (member.id === current.id || (member.handle && current.handle && member.handle.toLowerCase() === current.handle.toLowerCase())) {
       return current;
     }
-    return member;
+    return sanitizeMember(member);
   });
 }
 

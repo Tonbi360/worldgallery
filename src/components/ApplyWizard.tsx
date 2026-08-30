@@ -30,6 +30,13 @@ import { isHandleAvailable, saveCurrentUserProfile } from '../lib/userProfile';
 import { getInviteSeals, saveInviteSeals, getPendingApplicants, savePendingApplicants } from '../lib/curatorStore';
 import { PendingApplicant } from '../types/admin';
 import { GalleryMember } from '../types/gallery';
+import {
+  sanitizeText,
+  sanitizeStringArray,
+  validateAndOptimizeImage,
+  checkClientRateLimit,
+  recordClientAction,
+} from '../lib/security';
 
 const DRAFT_STORAGE_KEY = 'wg_apply_draft_v1';
 const SUGGESTED_TAGS = ['designer', 'photographer', 'writer', 'developer'];

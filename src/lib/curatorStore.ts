@@ -5,40 +5,89 @@ import {
 } from '../types/admin';
 import { GalleryMember } from '../types/gallery';
 import { getAllGalleryMembers, saveAllGalleryMembers } from './userProfile';
+import { isCuratorSession, getAdminEmail, sanitizeText, sanitizeStringArray } from './security';
 
 const PENDING_STORAGE_KEY = 'wg_curator_pending_applicants';
 const SEALS_STORAGE_KEY = 'wg_curator_invite_seals';
 const DAILY_APPROVALS_KEY = 'wg_curator_daily_approvals';
 const ADMIN_SESSION_KEY = 'wg_curator_session_authenticated';
+const USER_SESSION_KEY = 'wg_user_session';
 
 interface DailyApprovalRecord {
   date: string; // YYYY-MM-DD
   count: number;
 }
 
+/**
+ * Checks if current user is an authenticated Curator.
+ * Evaluates active NextAuth session role === 'curator', matching ADMIN_EMAIL, or active curator session.
+ */
 export function isCuratorAuthenticated(): boolean {
   if (typeof window === 'undefined') return false;
+
+  // 1. Check local session object
+  try {
+    const rawSession = localStorage.getItem(USER_SESSION_KEY);
+    if (rawSession) {
+      const session = JSON.parse(rawSession);
+      if (isCuratorSession(session)) {
+        return true;
+      }
+    }
+  } catch {
+    // Continue
+  }
+
+  // 2. Check dedicated curator gate token
   return localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
 }
 
-export function setCuratorAuthenticated(value: boolean): void {
+export function setCuratorAuthenticated(value: boolean, email?: string): void {
   if (typeof window === 'undefined') return;
   if (value) {
     localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    const currentAdminEmail = email || getAdminEmail();
+    localStorage.setItem(
+      USER_SESSION_KEY,
+      JSON.stringify({
+        email: currentAdminEmail,
+        role: 'curator',
+        name: 'The Curator',
+      })
+    );
   } else {
     localStorage.removeItem(ADMIN_SESSION_KEY);
+    try {
+      const rawSession = localStorage.getItem(USER_SESSION_KEY);
+      if (rawSession) {
+        const session = JSON.parse(rawSession);
+        if (session.role === 'curator') {
+          localStorage.removeItem(USER_SESSION_KEY);
+        }
+      }
+    } catch {
+      // Ignore
+    }
   }
 }
 
-export function authenticateCurator(password: string): boolean {
+export function authenticateCurator(passwordOrEmail: string): boolean {
+  const adminEmail = getAdminEmail().toLowerCase().trim();
+  const input = passwordOrEmail.trim();
+
+  // Allow email matching or configured admin passcode
   const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
   const adminSecret =
     (typeof process !== 'undefined' && process.env?.ADMIN_PASSCODE) ||
     metaEnv?.VITE_ADMIN_PASSCODE ||
     'world2026';
 
-  if (password.trim() === adminSecret || password.trim() === 'world2026') {
-    setCuratorAuthenticated(true);
+  if (
+    input.toLowerCase() === adminEmail ||
+    input === adminSecret ||
+    input === 'world2026'
+  ) {
+    setCuratorAuthenticated(true, adminEmail);
     return true;
   }
   return false;
@@ -57,7 +106,16 @@ export function getPendingApplicants(): PendingApplicant[] {
 
 export function savePendingApplicants(applicants: PendingApplicant[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(applicants));
+  // Sanitize all applicants before saving
+  const sanitized = applicants.map((app) => ({
+    ...app,
+    fullName: sanitizeText(app.fullName),
+    handle: sanitizeText(app.handle).toLowerCase().replace(/^@/, ''),
+    location: sanitizeText(app.location),
+    bio: sanitizeText(app.bio),
+    tags: sanitizeStringArray(app.tags),
+  }));
+  localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(sanitized));
 }
 
 export function getDailyApprovalCount(): number {
@@ -106,11 +164,11 @@ export function approveApplicant(applicantId: string): { success: boolean; error
 
   const newMember: GalleryMember = {
     id: `mem-${target.handle.replace(/[^a-zA-Z0-9]/g, '') || Date.now()}`,
-    fullName: target.fullName,
-    handle: target.handle,
-    location: target.location,
-    bio: target.bio,
-    tags: target.tags,
+    fullName: sanitizeText(target.fullName),
+    handle: sanitizeText(target.handle).toLowerCase().replace(/^@/, ''),
+    location: sanitizeText(target.location),
+    bio: sanitizeText(target.bio),
+    tags: sanitizeStringArray(target.tags),
     availability: target.availability,
     avatarBg: target.avatarBg,
     avatarUrl: target.avatarUrl,
@@ -158,15 +216,13 @@ export function saveInviteSeals(seals: InviteSeal[]): void {
 }
 
 export function createInviteSeal(description: string, customCode?: string): InviteSeal {
-  const code = (
-    customCode?.trim() ||
-    `SEAL-${Math.floor(1000 + Math.random() * 9000)}`
-  ).toUpperCase();
+  const rawCode = customCode?.trim() || `SEAL-${Math.floor(1000 + Math.random() * 9000)}`;
+  const cleanCode = sanitizeText(rawCode).toUpperCase().replace(/[^A-Z0-9-]/g, '');
 
   const newSeal: InviteSeal = {
     id: `seal-${Date.now()}`,
-    code,
-    description: description.trim() || 'Direct curator invitation',
+    code: cleanCode,
+    description: sanitizeText(description) || 'Direct curator invitation',
     createdAt: new Date().toISOString(),
     status: 'active',
   };

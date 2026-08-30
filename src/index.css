@@ -28,7 +28,11 @@
   --shadow-ios-card: 0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
 
-/* Base rule so borders are never black by default in Tailwind v4 */
+/* ==========================================================================
+   BROWSER NORMALIZATION & RESET
+   Ensures consistent rendering across Chrome, Safari, Firefox, Samsung Internet
+   ========================================================================== */
+
 *, ::before, ::after {
   border-color: rgba(60, 60, 67, 0.18);
   box-sizing: border-box;
@@ -39,53 +43,134 @@ html {
   color-scheme: light;
   background-color: #F2F2F7;
   color: #1C1C1E;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
+  overscroll-behavior-y: none;
   overflow: hidden;
   height: 100%;
+  width: 100%;
 }
 
 body {
   background-color: #F2F2F7;
   color: #1C1C1E;
   height: 100%;
+  width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   margin: 0;
   padding: 0;
   overflow: hidden;
   overscroll-behavior: none;
+  overscroll-behavior-y: none;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-/* Form inputs: enforce 16px to prevent Safari auto-zoom */
+/* Allow text selection only in inputs and readable bio blocks */
+input, textarea, [contenteditable="true"], .selectable-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Form inputs: enforce min 16px to prevent iOS Safari auto-zoom */
 input, select, textarea {
   font-size: 16px;
+  touch-action: manipulation;
 }
 
-/* Safe Area Inset Utility Classes */
+/* Safe Area Inset Utility Classes with Cross-Browser Fallbacks */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
 .safe-area-top {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--sat);
 }
 
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--sab);
 }
 
 .safe-area-tab-padding {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  padding-bottom: calc(var(--sab) + 64px);
 }
 
-/* Hide scrollbars */
+/* ==========================================================================
+   SCROLLBAR NORMALIZATION
+   Hidden on touch/iOS devices; refined 5px custom scrollbar on desktop
+   ========================================================================== */
+
+/* Universal Hide for Elements marked .no-scrollbar */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Desktop Webkit Scrollbars for scrollable views */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(60, 60, 67, 0.2);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(60, 60, 67, 0.35);
+  }
+}
+
+/* ==========================================================================
+   FROSTED GLASS & BACKDROP FILTER NORMALIZATION
+   Prefixed with -webkit- and graceful opaque fallback for unsupported engines
+   ========================================================================== */
+
+.ios-glass-nav {
+  background-color: rgba(242, 242, 247, 0.82);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+.ios-glass-card {
+  background-color: rgba(255, 255, 255, 0.85);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  backdrop-filter: blur(25px) saturate(180%);
+}
+
+.ios-glass-sheet {
+  background-color: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  backdrop-filter: blur(30px) saturate(190%);
+}
+
+/* Graceful Fallbacks if backdrop-filter is NOT supported (older Firefox/Android WebViews) */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .ios-glass-nav {
+    background-color: #F2F2F7 !important;
+  }
+  .ios-glass-card {
+    background-color: #FFFFFF !important;
+  }
+  .ios-glass-sheet {
+    background-color: #FFFFFF !important;
+  }
 }
