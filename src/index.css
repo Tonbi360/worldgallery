@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ios-bg: #F2F2F7;
+  --color-ios-card: #FFFFFF;
+  --color-ios-blue: #007AFF;
+  --color-ios-blue-pressed: #0062CC;
+  --color-ios-green: #34C759;
+  --color-ios-forest: #2D6A4F;
+  --color-ios-forest-pressed: #1E4D38;
+  --color-ios-orange: #FF9500;
+  --color-ios-gray: #8E8E93;
+  --color-ios-red: #FF3B30;
+  --color-ios-text: #1C1C1E;
+  --color-ios-secondary: rgba(60, 60, 67, 0.6);
+  --color-ios-tertiary: rgba(60, 60, 67, 0.3);
+  --color-ios-separator: #C6C6C8;
+  --color-ios-input-bg: #E5E5EA;
+
+  --radius-ios-card: 16px;
+  --radius-ios-group: 18px;
+  --radius-ios-sheet: 20px;
+  --radius-ios-pill: 9999px;
+
+  --shadow-ios-sheet: 0 -10px 40px -15px rgba(0, 0, 0, 0.15);
+  --shadow-ios-nav: 0 0.5px 0 0 rgba(0, 0, 0, 0.15);
+  --shadow-ios-tab: 0 -0.5px 0 0 rgba(0, 0, 0, 0.15);
+  --shadow-ios-card: 0 2px 8px -2px rgba(0, 0, 0, 0.06), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Base rule so borders are never black by default in Tailwind v4 */
+*, ::before, ::after {
+  border-color: rgba(60, 60, 67, 0.18);
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: light;
+  background-color: #F2F2F7;
+  color: #1C1C1E;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+}
+
+body {
+  background-color: #F2F2F7;
+  color: #1C1C1E;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+}
+
+/* Form inputs: enforce 16px to prevent Safari auto-zoom */
+input, select, textarea {
+  font-size: 16px;
+}
+
+/* Safe Area Inset Utility Classes */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-tab-padding {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+}
+
+/* Hide scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
