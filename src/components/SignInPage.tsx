@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, Eye, EyeOff, Loader2, Check, X, Mail } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, Check, X, Mail } from 'lucide-react';
+import { BrandLoader } from './BrandLoader';
 import { haptics } from '../lib/haptics';
 import { getAdminEmail, sanitizeText } from '../lib/security';
 import { dbVerifyUserCredentials } from '../lib/dataService';
@@ -345,7 +346,7 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
           className="w-full bg-ios-forest text-white font-sans font-semibold text-[15.5px] py-3.5 px-6 rounded-ios-pill shadow-xs hover:brightness-105 active:scale-[0.98] active:bg-ios-forest-pressed disabled:opacity-30 cursor-pointer transition-all flex items-center justify-center gap-2"
         >
           {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <BrandLoader size="sm" />
           ) : isSuccess ? (
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}
@@ -455,7 +456,7 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
                       className="w-full bg-ios-forest text-white font-sans font-semibold text-[15.5px] py-3.5 px-6 rounded-ios-pill shadow-xs disabled:opacity-30 active:scale-[0.98] active:bg-ios-forest-pressed transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       {forgotLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <BrandLoader size="sm" />
                       ) : (
                         'Send Reset Link'
                       )}

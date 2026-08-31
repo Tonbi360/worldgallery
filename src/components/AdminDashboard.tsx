@@ -23,6 +23,7 @@ import {
   Eye,
   AlertCircle,
 } from 'lucide-react';
+import { BrandLoader } from './BrandLoader';
 import { haptics } from '../lib/haptics';
 import { PendingApplicant, InviteSeal, CuratorTelemetry } from '../types/admin';
 import {
@@ -595,7 +596,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
                             className="flex-[2] bg-ios-forest hover:bg-ios-forest-pressed text-white font-sans font-semibold text-[14.5px] py-2.5 px-4 rounded-xl shadow-xs disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             {approvingId === app.id ? (
-                              <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                              <BrandLoader size="sm" className="w-4 h-4" />
                             ) : (
                               <>
                                 <Check className="w-4 h-4 stroke-[2.5]" />

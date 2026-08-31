@@ -19,6 +19,7 @@ import { GalleryMember, ContactBridge } from '../types/gallery';
 import { SentRequest } from '../types/activity';
 import { sanitizeText, checkClientRateLimit, recordClientAction } from '../lib/security';
 import { dbInsertConnectionRequest } from '../lib/dataService';
+import { BrandLoader } from './BrandLoader';
 
 interface ConnectSheetProps {
   member: GalleryMember;
@@ -318,7 +319,7 @@ export default function ConnectSheet({
                     }`}
                   >
                     {isSending ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <BrandLoader size="sm" />
                     ) : (
                       <>
                         <Send className="w-4 h-4" />

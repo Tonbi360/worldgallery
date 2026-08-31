@@ -11,11 +11,11 @@ import {
   X,
   Plus,
   Lock,
-  Loader2,
   KeyRound,
   Users,
   ShieldCheck,
 } from 'lucide-react';
+import { BrandLoader } from './BrandLoader';
 import { haptics } from '../lib/haptics';
 import {
   ApplyDraft,
@@ -1335,7 +1335,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
                     className="w-full bg-ios-forest text-white font-sans font-semibold text-[15.5px] py-3.5 px-6 rounded-ios-pill shadow-xs hover:brightness-105 active:scale-[0.98] active:bg-ios-forest-pressed disabled:opacity-30 cursor-pointer transition-all flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <BrandLoader size="sm" />
                     ) : isSubmitSuccess ? (
                       <motion.div
                         initial={{ scale: 0.5, opacity: 0 }}

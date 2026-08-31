@@ -11,7 +11,6 @@ import {
   ChevronRight,
   ShieldCheck,
   AlertCircle,
-  Loader2,
   ExternalLink,
   Coffee,
   Bell,
@@ -29,6 +28,7 @@ import {
   QrCode,
   Share2,
 } from 'lucide-react';
+import { BrandLoader } from './BrandLoader';
 import { haptics } from '../lib/haptics';
 import {
   GalleryMember,
@@ -1173,7 +1173,7 @@ export default function EditPortraitScreen({
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <BrandLoader size="sm" className="w-4 h-4" />
                       <span>Saving…</span>
                     </>
                   ) : isSavedSuccess ? (

@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditEnvironmentVariables } from './lib/security';
+import { BrandLoader } from './components/BrandLoader';
 
 // Code-split routes for fast bundle parsing and publishing
 const LandingPage = lazy(() => import('./components/LandingPage'));
@@ -20,8 +21,8 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 function RouteLoadingFallback() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-ios-bg text-ios-secondary">
-      <div className="w-8 h-8 rounded-full border-2 border-ios-forest/30 border-t-ios-forest animate-spin" />
+    <div className="flex flex-col items-center justify-center min-h-[100dvh] w-full bg-[#F2F2F7]">
+      <BrandLoader size="lg" ariaLabel="Loading World Gallery..." />
     </div>
   );
 }
