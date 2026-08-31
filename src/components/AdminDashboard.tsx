@@ -82,14 +82,33 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync session & data
+  // Sync session & data with route guard
   useEffect(() => {
+    // Route Guard: If a standard non-curator member attempts to access /admin, redirect immediately to /gallery
+    if (typeof window !== 'undefined') {
+      try {
+        const rawSession = localStorage.getItem('wg_user_session');
+        if (rawSession) {
+          const session = JSON.parse(rawSession);
+          const configuredAdmin = getAdminEmail().toLowerCase().trim();
+          const userEmail = (session?.email || '').toLowerCase().trim();
+          if (session?.role === 'member' && userEmail !== configuredAdmin && userEmail !== 'tonbaratiminipredestiny@gmail.com') {
+            console.warn('[Security Guard] Non-curator member attempted to access /admin. Redirecting to /gallery.');
+            onNavigate('/gallery');
+            return;
+          }
+        }
+      } catch {
+        // Continue
+      }
+    }
+
     const authed = isCuratorAuthenticated();
     setIsAuthenticated(authed);
     if (authed) {
       refreshData();
     }
-  }, []);
+  }, [onNavigate]);
 
   const refreshData = () => {
     setApplicants(getPendingApplicants());

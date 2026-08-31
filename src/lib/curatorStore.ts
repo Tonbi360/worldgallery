@@ -242,6 +242,10 @@ export function saveInviteSeals(seals: InviteSeal[]): void {
 }
 
 export function createInviteSeal(description: string, customCode?: string): InviteSeal {
+  if (!isCuratorAuthenticated()) {
+    throw new Error('Unauthorized: Only an authenticated Curator can forge invitation seals.');
+  }
+
   const rawCode = customCode?.trim() || `SEAL-${Math.floor(1000 + Math.random() * 9000)}`;
   const cleanCode = sanitizeText(rawCode).toUpperCase().replace(/[^A-Z0-9-]/g, '');
 
@@ -260,6 +264,10 @@ export function createInviteSeal(description: string, customCode?: string): Invi
 }
 
 export function deleteInviteSeal(sealId: string): void {
+  if (!isCuratorAuthenticated()) {
+    throw new Error('Unauthorized: Only an authenticated Curator can revoke invitation seals.');
+  }
+
   const current = getInviteSeals();
   const updated = current.filter((s) => s.id !== sealId);
   saveInviteSeals(updated);

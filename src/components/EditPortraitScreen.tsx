@@ -1104,31 +1104,40 @@ export default function EditPortraitScreen({
                 <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
               </button>
 
-              <div className="border-t border-ios-separator/30" />
+              {/* 3. Ko-fi Creator Support (Configurable via VITE_KOFI_URL; hidden if unset) */}
+              {(() => {
+                const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
+                const kofiUrl = metaEnv?.VITE_KOFI_URL?.trim();
+                if (!kofiUrl) return null;
 
-              {/* 3. Ko-fi Creator Support */}
-              <a
-                href="https://ko-fi.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => haptics.selection()}
-                className="w-full flex items-center justify-between py-1.5 hover:bg-[#F2F2F7]/50 active:bg-[#E5E5EA] rounded-xl transition-colors cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-700 flex items-center justify-center flex-shrink-0">
-                    <Coffee className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-sans font-semibold text-[14px] text-ios-text">
-                      Support the creator on Ko-fi
-                    </span>
-                    <span className="font-sans text-[11.5px] text-ios-secondary">
-                      Quietly fund directory infrastructure and human curation.
-                    </span>
-                  </div>
-                </div>
-                <ExternalLink className="w-4 h-4 text-ios-secondary/50" />
-              </a>
+                return (
+                  <>
+                    <div className="border-t border-ios-separator/30" />
+                    <a
+                      href={kofiUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => haptics.selection()}
+                      className="w-full flex items-center justify-between py-1.5 hover:bg-[#F2F2F7]/50 active:bg-[#E5E5EA] rounded-xl transition-colors cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-700 flex items-center justify-center flex-shrink-0">
+                          <Coffee className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-sans font-semibold text-[14px] text-ios-text">
+                            Support the creator on Ko-fi
+                          </span>
+                          <span className="font-sans text-[11.5px] text-ios-secondary">
+                            Quietly fund directory infrastructure and human curation.
+                          </span>
+                        </div>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-ios-secondary/50" />
+                    </a>
+                  </>
+                );
+              })()}
             </section>
           </div>
         )}

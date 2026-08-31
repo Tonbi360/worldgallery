@@ -1,4 +1,4 @@
-import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
+import { getApiDb, schema, setCorsHeaders, verifyCuratorApiAuth } from '../_lib/db';
 import { eq, desc } from 'drizzle-orm';
 
 export default async function handler(req: any, res: any) {
@@ -10,6 +10,12 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Server-side curator verification
+  const auth = verifyCuratorApiAuth(req);
+  if (!auth.authorized) {
+    return res.status(401).json({ error: auth.error || 'Unauthorized' });
   }
 
   const db = getApiDb();

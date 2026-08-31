@@ -34,6 +34,15 @@ export function getAdminEmail(): string {
   );
 }
 
+export function getAppUrl(): string {
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
+  return (
+    (typeof process !== 'undefined' && (process.env?.APP_URL || process.env?.NEXTAUTH_URL)) ||
+    metaEnv?.VITE_APP_URL ||
+    (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://worldgallery-eight.vercel.app')
+  );
+}
+
 /**
  * Sanitizes raw string inputs against XSS and injection attacks.
  */
@@ -255,24 +264,35 @@ export function auditEnvironmentVariables(): EnvValidationReport {
   const missing: string[] = [];
   const warnings: string[] = [];
 
-  const check = (name: string, isClientAccessible = false) => {
-    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
-    const val =
-      (typeof process !== 'undefined' && process.env?.[name]) ||
-      (isClientAccessible ? metaEnv?.[`VITE_${name}`] || metaEnv?.[name] : undefined);
+  const isBrowser = typeof window !== 'undefined';
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
 
-    if (!val) {
-      missing.push(name);
+  if (isBrowser) {
+    // Client-side environment audit (VITE_ prefixed only)
+    if (!metaEnv?.VITE_ADMIN_EMAIL) {
+      warnings.push(`VITE_ADMIN_EMAIL is not set in browser. Using fallback curator identity (${ADMIN_EMAIL_FALLBACK}).`);
+      console.info(`[World Gallery Audit] Client: VITE_ADMIN_EMAIL not set, using fallback (${ADMIN_EMAIL_FALLBACK}).`);
+    } else {
+      console.info(`[World Gallery Audit] Client: Loaded VITE_ADMIN_EMAIL (${metaEnv.VITE_ADMIN_EMAIL}).`);
     }
-  };
-
-  check('DATABASE_URL');
-  check('NEXTAUTH_SECRET');
-  check('RESEND_API_KEY');
-  check('ADMIN_EMAIL', true);
+  } else {
+    // Serverless / Node environment audit
+    if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+      missing.push('DATABASE_URL');
+      console.error('❌ [World Gallery Boot] Missing required server variable: DATABASE_URL. Database connection will fail.');
+    }
+    if (!process.env.ADMIN_EMAIL) {
+      missing.push('ADMIN_EMAIL');
+      console.error('❌ [World Gallery Boot] Missing required server variable: ADMIN_EMAIL.');
+    }
+    if (!process.env.ADMIN_PASSCODE) {
+      missing.push('ADMIN_PASSCODE');
+      console.error('❌ [World Gallery Boot] Missing required server variable: ADMIN_PASSCODE.');
+    }
+  }
 
   const adminEmail = getAdminEmail();
-  if (adminEmail === ADMIN_EMAIL_FALLBACK) {
+  if (adminEmail === ADMIN_EMAIL_FALLBACK && !warnings.some(w => w.includes('fallback'))) {
     warnings.push(`Using fallback curator identity (${ADMIN_EMAIL_FALLBACK}).`);
   }
 

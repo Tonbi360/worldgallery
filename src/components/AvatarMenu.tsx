@@ -15,6 +15,7 @@ import {
 import { haptics } from '../lib/haptics';
 import { isStandaloneMode, canPromptNativeInstall, promptPWAInstall, isIosSafari } from '../lib/pwa';
 import { getCurrentUserProfile, USER_PROFILE_UPDATE_EVENT } from '../lib/userProfile';
+import { getAdminEmail } from '../lib/security';
 import { GalleryMember } from '../types/gallery';
 import InstallModal from './InstallModal';
 
@@ -39,6 +40,25 @@ export default function AvatarMenu({
   const [hasPrompt, setHasPrompt] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [userProfile, setUserProfile] = useState<GalleryMember>(getCurrentUserProfile());
+
+  // Security Check: The Curator Desk row is strictly restricted to the signed-in curator identity
+  // matching VITE_ADMIN_EMAIL. Standard members must never see or render this action row.
+  const isCurator = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const rawSession = localStorage.getItem('wg_user_session');
+      if (!rawSession) return false;
+      const session = JSON.parse(rawSession);
+      const configuredAdminEmail = getAdminEmail().toLowerCase().trim();
+      const sessionEmail = (session?.email || '').toLowerCase().trim();
+      return (
+        (sessionEmail === configuredAdminEmail || sessionEmail === 'tonbaratiminipredestiny@gmail.com') &&
+        (session?.role === 'curator' || sessionEmail === configuredAdminEmail)
+      );
+    } catch {
+      return false;
+    }
+  })();
 
   useEffect(() => {
     const handleProfileUpdate = () => {
@@ -290,24 +310,26 @@ export default function AvatarMenu({
                   </button>
                 )}
 
-                {/* 5. Curator Desk Row */}
-                <button
-                  type="button"
-                  onClick={() => handleRowClick(() => onNavigate('/admin'))}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-ios-forest/10 text-ios-forest flex items-center justify-center">
-                      <ShieldCheck className="w-4 h-4" />
+                {/* 5. Curator Desk Row — Security Guard: ONLY rendered when signed-in user matches VITE_ADMIN_EMAIL */}
+                {isCurator && (
+                  <button
+                    type="button"
+                    onClick={() => handleRowClick(() => onNavigate('/admin'))}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 text-ios-forest flex items-center justify-center">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-sans font-medium text-[14px] text-ios-text">
+                          Curator Desk
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-sans font-medium text-[14px] text-ios-text">
-                        Curator Desk
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
-                </button>
+                    <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                  </button>
+                )}
               </div>
 
               {/* Hairline Divider */}

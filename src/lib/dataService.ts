@@ -74,9 +74,30 @@ export async function dbUpsertProfile(profile: GalleryMember, _userId?: string):
 // 2. CURATOR & APPLICANTS QUERY LAYER
 // ==========================================
 
+function getCuratorHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (typeof window !== 'undefined') {
+    try {
+      const rawSession = localStorage.getItem('wg_user_session');
+      if (rawSession) {
+        const session = JSON.parse(rawSession);
+        if (session.email) headers['x-curator-email'] = session.email;
+        if (session.role) headers['x-curator-role'] = session.role;
+      }
+    } catch {
+      // Continue
+    }
+  }
+  return headers;
+}
+
 export async function dbGetPendingApplicants(): Promise<PendingApplicant[]> {
   try {
-    const res = await fetch('/api/curator/applicants').catch(() => null);
+    const res = await fetch('/api/curator/applicants', {
+      headers: getCuratorHeaders(),
+    }).catch(() => null);
     if (res && res.ok) {
       const data = await res.json();
       if (Array.isArray(data?.data)) return data.data;
@@ -91,7 +112,7 @@ export async function dbApproveApplicant(applicantId: string): Promise<{ success
   try {
     const res = await fetch('/api/curator/approve', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getCuratorHeaders(),
       body: JSON.stringify({ applicantId: sanitizeText(applicantId) }),
     }).catch(() => null);
 
@@ -109,7 +130,7 @@ export async function dbDeclineApplicant(applicantId: string): Promise<boolean> 
   try {
     const res = await fetch('/api/curator/decline', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getCuratorHeaders(),
       body: JSON.stringify({ applicantId: sanitizeText(applicantId) }),
     }).catch(() => null);
 
