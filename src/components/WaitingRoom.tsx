@@ -98,51 +98,88 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
     }
   }, []);
 
-  // Polling State (silent check simulation)
+  // Polling & Live Server Status Check
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckedTime, setLastCheckedTime] = useState<number>(Date.now());
+  const [memberSerial, setMemberSerial] = useState<string>('#0001');
 
-  // 30s Silent Polling
+  const checkLiveServerStatus = async (showFeedback = false) => {
+    const cleanHandle = applicant.handle.trim().toLowerCase().replace(/^@/, '');
+    if (!cleanHandle) return;
+
+    try {
+      const res = await fetch(`/api/profiles/${encodeURIComponent(cleanHandle)}`).catch(() => null);
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data?.data) {
+          const p = data.data;
+          if (p.memberNumber) {
+            setMemberSerial(p.memberNumber);
+          }
+          if (p.status === 'active' || p.memberNumber) {
+            setWaitingState('approved');
+            if (showFeedback) haptics.notification('success');
+            return;
+          }
+          if (p.status === 'rejected') {
+            setWaitingState('rejected');
+            if (showFeedback) haptics.notification('warning');
+            return;
+          }
+        }
+      }
+    } catch {
+      // In DEV, fallback to local store if server unavailable
+      if (import.meta.env.DEV) {
+        const members = getAllGalleryMembers();
+        if (members.some((m) => m.handle.toLowerCase() === cleanHandle)) {
+          setWaitingState('approved');
+          if (showFeedback) haptics.notification('success');
+          return;
+        }
+        const pendingList = getPendingApplicants();
+        const foundPending = pendingList.find((p) => p.handle.toLowerCase() === cleanHandle);
+        if (foundPending?.status === 'rejected') {
+          setWaitingState('rejected');
+          if (showFeedback) haptics.notification('warning');
+          return;
+        }
+        if (foundPending?.status === 'approved') {
+          setWaitingState('approved');
+          if (showFeedback) haptics.notification('success');
+          return;
+        }
+      }
+    }
+
+    if (showFeedback) haptics.selection();
+  };
+
+  // Check on mount
+  useEffect(() => {
+    checkLiveServerStatus(false);
+  }, []);
+
+  // 15s Silent Polling in Production/Live
   useEffect(() => {
     if (waitingState !== 'pending') return;
 
     const timer = setInterval(() => {
-      // Silent check without UI flicker
       setLastCheckedTime(Date.now());
-    }, 30000);
+      checkLiveServerStatus(false);
+    }, 15000);
 
     return () => clearInterval(timer);
-  }, [waitingState]);
+  }, [waitingState, applicant.handle]);
 
   // Handle Check Status button
-  const handleCheckStatus = () => {
+  const handleCheckStatus = async () => {
     if (isChecking) return;
     haptics.impact('light');
     setIsChecking(true);
-    setTimeout(() => {
-      setIsChecking(false);
-      setLastCheckedTime(Date.now());
-      const cleanHandle = applicant.handle.trim().toLowerCase().replace(/^@/, '');
-      const members = getAllGalleryMembers();
-      if (members.some((m) => m.handle.toLowerCase() === cleanHandle)) {
-        setWaitingState('approved');
-        haptics.notification('success');
-        return;
-      }
-      const pendingList = getPendingApplicants();
-      const foundPending = pendingList.find((p) => p.handle.toLowerCase() === cleanHandle);
-      if (foundPending?.status === 'rejected') {
-        setWaitingState('rejected');
-        haptics.notification('warning');
-        return;
-      }
-      if (foundPending?.status === 'approved') {
-        setWaitingState('approved');
-        haptics.notification('success');
-        return;
-      }
-      haptics.selection();
-    }, 600);
+    await checkLiveServerStatus(true);
+    setIsChecking(false);
+    setLastCheckedTime(Date.now());
   };
 
   // Handle Notifications Toggle
@@ -464,7 +501,7 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                     Official Member Pass
                   </span>
                   <span className="font-mono text-[13px] font-bold bg-white/20 px-2.5 py-0.5 rounded-full backdrop-blur-xs">
-                    #0428
+                    {memberSerial || '#0001'}
                   </span>
                 </div>
 
@@ -639,29 +676,31 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
         </AnimatePresence>
       </div>
 
-      {/* 3. Discreet TEMP Demo Switcher Bar (Positioned at bottom for testing) */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 bg-ios-card/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-ios-separator/60 flex items-center gap-1.5 max-w-[92%]">
-        <span className="font-mono text-[10px] font-bold uppercase text-ios-secondary/70 mr-1">
-          TEMP:
-        </span>
-        {(['pending', 'approved', 'rejected'] as const).map((mode) => {
-          const isActive = waitingState === mode;
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => handleSetState(mode)}
-              className={`font-sans text-[11.5px] font-semibold px-2.5 py-1 rounded-full capitalize transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-ios-text text-white shadow-2xs'
-                  : 'text-ios-secondary hover:text-ios-text bg-transparent'
-              }`}
-            >
-              {mode}
-            </button>
-          );
-        })}
-      </div>
+      {/* 3. Discreet TEMP Demo Switcher Bar (DEV Mode Only — Never Rendered in Production) */}
+      {import.meta.env.DEV && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 bg-ios-card/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-ios-separator/60 flex items-center gap-1.5 max-w-[92%]">
+          <span className="font-mono text-[10px] font-bold uppercase text-ios-secondary/70 mr-1">
+            TEMP:
+          </span>
+          {(['pending', 'approved', 'rejected'] as const).map((mode) => {
+            const isActive = waitingState === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleSetState(mode)}
+                className={`font-sans text-[11.5px] font-semibold px-2.5 py-1 rounded-full capitalize transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-ios-text text-white shadow-2xs'
+                    : 'text-ios-secondary hover:text-ios-text bg-transparent'
+                }`}
+              >
+                {mode}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }

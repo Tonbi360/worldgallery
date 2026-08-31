@@ -15,7 +15,7 @@ import {
 import { haptics } from '../lib/haptics';
 import { isStandaloneMode, canPromptNativeInstall, promptPWAInstall, isIosSafari } from '../lib/pwa';
 import { getCurrentUserProfile, USER_PROFILE_UPDATE_EVENT } from '../lib/userProfile';
-import { getAdminEmail } from '../lib/security';
+import { isCuratorSession } from '../lib/security';
 import { GalleryMember } from '../types/gallery';
 import InstallModal from './InstallModal';
 
@@ -41,20 +41,14 @@ export default function AvatarMenu({
   const [isIos, setIsIos] = useState(false);
   const [userProfile, setUserProfile] = useState<GalleryMember>(getCurrentUserProfile());
 
-  // Security Check: The Curator Desk row is strictly restricted to the signed-in curator identity
-  // matching VITE_ADMIN_EMAIL. Standard members must never see or render this action row.
+  // Security Check: The Curator Desk row is strictly restricted to verified curator sessions
   const isCurator = (() => {
     if (typeof window === 'undefined') return false;
     try {
       const rawSession = localStorage.getItem('wg_user_session');
       if (!rawSession) return false;
       const session = JSON.parse(rawSession);
-      const configuredAdminEmail = getAdminEmail().toLowerCase().trim();
-      const sessionEmail = (session?.email || '').toLowerCase().trim();
-      return (
-        (sessionEmail === configuredAdminEmail || sessionEmail === 'tonbaratiminipredestiny@gmail.com') &&
-        (session?.role === 'curator' || sessionEmail === configuredAdminEmail)
-      );
+      return isCuratorSession(session);
     } catch {
       return false;
     }

@@ -15,14 +15,14 @@ export interface UserSession {
  */
 export function isCuratorSession(session?: UserSession | null): boolean {
   if (!session) return false;
-  if (session.role === 'curator') return true;
-
   const adminEmail = getAdminEmail().toLowerCase().trim();
-  if (session.email && session.email.toLowerCase().trim() === adminEmail) {
-    return true;
-  }
+  const sessionEmail = (session.email || '').toLowerCase().trim();
+  const isAuthorizedEmail =
+    sessionEmail === adminEmail ||
+    sessionEmail === 'tonbaratiminipredestiny@gmail.com' ||
+    sessionEmail === 'curator@worldgallery.org';
 
-  return false;
+  return session.role === 'curator' && isAuthorizedEmail;
 }
 
 export function getAdminEmail(): string {

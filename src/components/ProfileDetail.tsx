@@ -294,7 +294,7 @@ export default function ProfileDetail({
 
                 {/* Member Provenance */}
                 <p className="font-mono text-[11px] font-bold tracking-wider uppercase text-ios-secondary/80 mb-2.5">
-                  {member.memberNumber || '#0428'} · {member.cohort || 'Cohort 2026'}
+                  {member.memberNumber || 'Member'} · {member.cohort || 'Cohort 2026'}
                 </p>
 
                 {/* Availability Dot + Label (Semantic Colors) */}

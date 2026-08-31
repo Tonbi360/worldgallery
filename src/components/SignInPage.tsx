@@ -106,66 +106,62 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check credentials via auth endpoint or active session
+    // Authenticate credentials via serverless auth endpoint
     try {
-      // 1. Try server auth endpoint if available
-      const response = await fetch('/api/auth/signin', {
+      const response = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, password }),
+        body: JSON.stringify({ email: cleanEmail, passcode: password }),
       }).catch(() => null);
 
       if (response && response.ok) {
         const data = await response.json();
-        if (data.session) {
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.session));
+        if (data.verified && data.user) {
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+          if (data.user.role === 'curator') {
+            localStorage.setItem('wg_curator_session_authenticated', 'true');
+            handleAuthSuccess('/admin');
+          } else {
+            localStorage.removeItem('wg_curator_session_authenticated');
+            handleAuthSuccess('/gallery');
+          }
+          return;
         }
-        handleAuthSuccess(data.route || '/gallery');
+      }
+
+      // If server returned 401 or invalid credentials
+      if (response && response.status === 401) {
+        setLoading(false);
+        setErrorType('invalid');
+        haptics.notification('error');
+        triggerShake();
         return;
       }
 
-      // 2. Validate user credentials against users database
-      const dbAuthResult = await dbVerifyUserCredentials(cleanEmail, password);
+      // In DEV environment only: allow fallback for local sandbox testing
+      if (import.meta.env.DEV) {
+        const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
+        const adminPasscode =
+          (typeof process !== 'undefined' && process.env?.ADMIN_PASSCODE) ||
+          metaEnv?.VITE_ADMIN_PASSCODE ||
+          'world2026';
+        const configuredAdmin = getAdminEmail().toLowerCase().trim();
 
-      if (dbAuthResult.verified && dbAuthResult.user) {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(dbAuthResult.user));
-        if (dbAuthResult.user.role === 'curator') {
+        if (
+          (cleanEmail === configuredAdmin || cleanEmail === 'curator@worldgallery.org' || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
+          (password === adminPasscode || password === 'world2026')
+        ) {
+          const curatorUser = { id: 'usr_curator_tonbara', email: cleanEmail, role: 'curator', name: 'The Curator' };
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(curatorUser));
           localStorage.setItem('wg_curator_session_authenticated', 'true');
           handleAuthSuccess('/admin');
           return;
         }
-        handleAuthSuccess('/gallery');
-        return;
       }
 
-      // 3. Fallback check for offline/preview environment
-      const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
-      const adminPasscode =
-        (typeof process !== 'undefined' && process.env?.ADMIN_PASSCODE) ||
-        metaEnv?.VITE_ADMIN_PASSCODE ||
-        'world2026';
-      const configuredAdmin = getAdminEmail().toLowerCase().trim();
-
-      if (
-        (cleanEmail === configuredAdmin || cleanEmail === 'curator@worldgallery.org' || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
-        (password === adminPasscode || password === 'world2026')
-      ) {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ email: cleanEmail, role: 'curator', name: 'The Curator' }));
-        localStorage.setItem('wg_curator_session_authenticated', 'true');
-        handleAuthSuccess('/admin');
-        return;
-      }
-
-      // Standard member login verification fallback
-      if (password.length >= 6) {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ email: cleanEmail, role: 'member' }));
-        handleAuthSuccess('/gallery');
-        return;
-      }
-
-      // Invalid credentials
+      // In PROD or when verification fails:
       setLoading(false);
-      setErrorType('invalid');
+      setErrorType(response ? 'invalid' : 'network');
       haptics.notification('error');
       triggerShake();
     } catch {
