@@ -34,23 +34,27 @@ const memoryRateLimits: RateLimitStore = {};
  * CORS headers configuration locked strictly to the trusted domain (no wildcard *)
  */
 export function getSecureCorsHeaders(origin?: string): HeadersInit {
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
+  const configuredAppUrl =
+    (typeof process !== 'undefined' && (process.env?.APP_URL || process.env?.NEXTAUTH_URL)) ||
+    metaEnv?.VITE_APP_URL ||
+    (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '');
+
   const allowedOrigins = [
-    'https://worldgallery-eight.vercel.app',
-    'https://worldgallery.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
     'https://ais-dev-mftvplyoikvax2x35ybbry-346904313667.europe-west2.run.app',
     'https://ais-pre-mftvplyoikvax2x35ybbry-346904313667.europe-west2.run.app',
   ];
 
+  if (configuredAppUrl && !allowedOrigins.includes(configuredAppUrl)) {
+    allowedOrigins.push(configuredAppUrl);
+  }
+
   const isVercelPreview = origin && /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin);
   const isAllowed = origin && (allowedOrigins.includes(origin) || isVercelPreview);
 
-  const defaultOrigin =
-    (typeof process !== 'undefined' && (process.env?.APP_URL || process.env?.NEXTAUTH_URL)) ||
-    'https://worldgallery-eight.vercel.app';
-
-  const matchedOrigin = isAllowed ? origin : defaultOrigin;
+  const matchedOrigin = isAllowed ? origin : (configuredAppUrl || origin || '');
 
   return {
     'Access-Control-Allow-Origin': matchedOrigin,

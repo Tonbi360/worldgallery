@@ -39,7 +39,7 @@ export function getAppUrl(): string {
   return (
     (typeof process !== 'undefined' && (process.env?.APP_URL || process.env?.NEXTAUTH_URL)) ||
     metaEnv?.VITE_APP_URL ||
-    (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : 'https://worldgallery-eight.vercel.app')
+    (typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '')
   );
 }
 

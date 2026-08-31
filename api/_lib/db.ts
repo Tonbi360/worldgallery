@@ -45,25 +45,28 @@ export function getApiDb() {
 export { schema };
 
 export function setCorsHeaders(res: any, origin?: string) {
+  const configuredAppUrl =
+    (typeof process !== 'undefined' && (process.env?.APP_URL || process.env?.NEXTAUTH_URL)) || '';
+
   const allowedOrigins = [
-    'https://worldgallery-eight.vercel.app',
-    'https://worldgallery.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
     'https://ais-dev-mftvplyoikvax2x35ybbry-346904313667.europe-west2.run.app',
     'https://ais-pre-mftvplyoikvax2x35ybbry-346904313667.europe-west2.run.app',
   ];
 
+  if (configuredAppUrl && !allowedOrigins.includes(configuredAppUrl)) {
+    allowedOrigins.push(configuredAppUrl);
+  }
+
   const isVercelPreview = origin && /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin);
   const isAllowed = origin && (allowedOrigins.includes(origin) || isVercelPreview);
 
-  const defaultOrigin =
-    (typeof process !== 'undefined' && (process.env?.APP_URL || process.env?.NEXTAUTH_URL)) ||
-    'https://worldgallery-eight.vercel.app';
+  const matchedOrigin = isAllowed ? origin : (configuredAppUrl || origin || '');
 
-  const matchedOrigin = isAllowed ? origin : defaultOrigin;
-
-  res.setHeader('Access-Control-Allow-Origin', matchedOrigin);
+  if (matchedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', matchedOrigin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-curator-email, x-curator-role, x-curator-passcode');
   res.setHeader('Access-Control-Max-Age', '86400');
