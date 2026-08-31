@@ -10,9 +10,11 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "db:push": "drizzle-kit push",
+    "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx src/lib/seed.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/dompurify": "^3.2.0",
     "@vitejs/plugin-react": "^5.0.4",

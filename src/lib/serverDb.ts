@@ -1,10 +1,9 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 import * as schema from '../../drizzle/schema';
 
-// Lazy-initialized database connection for server/node scripts, migrations and APIs
+// Lazy-initialized database connection for server/node scripts, Vercel/serverless functions, and APIs
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
-let clientInstance: ReturnType<typeof postgres> | null = null;
 
 export function getServerDb() {
   if (dbInstance) return dbInstance;
@@ -18,8 +17,8 @@ export function getServerDb() {
   }
 
   try {
-    clientInstance = postgres(connectionString, { max: 10 });
-    dbInstance = drizzle(clientInstance, { schema });
+    const sql = neon(connectionString);
+    dbInstance = drizzle(sql, { schema });
     return dbInstance;
   } catch (err) {
     console.warn('[Database] Could not connect to DATABASE_URL:', err);

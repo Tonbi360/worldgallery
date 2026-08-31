@@ -8,7 +8,6 @@
  * - Curator Approvals & Invite Codes
  */
 
-import bcrypt from 'bcryptjs';
 import { GalleryMember, ContactBridge } from '../types/gallery';
 import { PendingApplicant } from '../types/admin';
 import { IncomingRequest, SentRequest } from '../types/activity';
