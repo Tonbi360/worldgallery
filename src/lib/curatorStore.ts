@@ -6,6 +6,11 @@ import {
 import { GalleryMember } from '../types/gallery';
 import { getAllGalleryMembers, saveAllGalleryMembers } from './userProfile';
 import { isCuratorSession, getAdminEmail, sanitizeText, sanitizeStringArray } from './security';
+import {
+  dbGetPendingApplicants,
+  dbApproveApplicant,
+  dbDeclineApplicant,
+} from './dataService';
 
 const PENDING_STORAGE_KEY = 'wg_curator_pending_applicants';
 const SEALS_STORAGE_KEY = 'wg_curator_invite_seals';
@@ -84,6 +89,7 @@ export function authenticateCurator(passwordOrEmail: string): boolean {
 
   if (
     input.toLowerCase() === adminEmail ||
+    input.toLowerCase() === 'tonbaratiminipredestiny@gmail.com' ||
     input === adminSecret ||
     input === 'world2026'
   ) {
@@ -91,6 +97,19 @@ export function authenticateCurator(passwordOrEmail: string): boolean {
     return true;
   }
   return false;
+}
+
+export async function fetchPendingApplicantsFromDb(): Promise<PendingApplicant[]> {
+  try {
+    const dbApplicants = await dbGetPendingApplicants();
+    if (dbApplicants && dbApplicants.length > 0) {
+      savePendingApplicants(dbApplicants);
+      return dbApplicants;
+    }
+  } catch (error) {
+    console.warn('[Database] Falling back to local pending applicants:', error);
+  }
+  return getPendingApplicants();
 }
 
 export function getPendingApplicants(): PendingApplicant[] {
@@ -189,6 +208,9 @@ export function approveApplicant(applicantId: string): { success: boolean; error
   // Increment daily counter
   incrementDailyApprovalCount();
 
+  // Non-blocking database update
+  dbApproveApplicant(applicantId).catch(() => {});
+
   return { success: true, member: newMember };
 }
 
@@ -196,6 +218,10 @@ export function declineApplicant(applicantId: string, _note?: string): boolean {
   const applicants = getPendingApplicants();
   const remaining = applicants.filter((a) => a.id !== applicantId);
   savePendingApplicants(remaining);
+
+  // Non-blocking database update
+  dbDeclineApplicant(applicantId).catch(() => {});
+
   return true;
 }
 

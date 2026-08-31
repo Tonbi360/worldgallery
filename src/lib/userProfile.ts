@@ -1,6 +1,7 @@
 import { GalleryMember, ContactBridge } from '../types/gallery';
 import { ContactChannelType, RESERVED_SYSTEM_HANDLES } from '../types/apply';
 import { sanitizeText, sanitizeStringArray } from './security';
+import { dbGetAllActiveProfiles, dbGetProfileByHandle, dbUpsertProfile } from './dataService';
 
 export const CURRENT_USER_STORAGE_KEY = 'wg_current_user_profile';
 export const USER_PROFILE_UPDATE_EVENT = 'wg_user_profile_updated';
@@ -52,12 +53,24 @@ export function getCurrentUserProfile(): GalleryMember {
   return DEFAULT_CURRENT_USER;
 }
 
+export async function saveCurrentUserProfileAsync(profile: GalleryMember): Promise<void> {
+  saveCurrentUserProfile(profile);
+  try {
+    await dbUpsertProfile(profile);
+  } catch (err) {
+    console.warn('[Database] Async profile persist notice:', err);
+  }
+}
+
 export function saveCurrentUserProfile(profile: GalleryMember): void {
   if (typeof window === 'undefined') return;
   try {
     const sanitized = sanitizeMember(profile);
     localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(sanitized));
     window.dispatchEvent(new CustomEvent(USER_PROFILE_UPDATE_EVENT, { detail: sanitized }));
+
+    // Non-blocking database synchronization
+    dbUpsertProfile(sanitized).catch(() => {});
   } catch (err) {
     console.error('Failed to save current user profile:', err);
     throw err;
@@ -73,6 +86,19 @@ export function saveAllGalleryMembers(members: GalleryMember[]): void {
   } catch (err) {
     console.error('Failed to save all gallery members:', err);
   }
+}
+
+export async function fetchAllGalleryMembersFromDb(): Promise<GalleryMember[]> {
+  try {
+    const dbMembers = await dbGetAllActiveProfiles();
+    if (dbMembers && dbMembers.length > 0) {
+      saveAllGalleryMembers(dbMembers);
+      return dbMembers;
+    }
+  } catch (error) {
+    console.warn('[Database] Falling back to local gallery directory:', error);
+  }
+  return getAllGalleryMembers();
 }
 
 export function getAllGalleryMembers(): GalleryMember[] {

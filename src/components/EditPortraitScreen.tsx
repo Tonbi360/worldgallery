@@ -46,6 +46,11 @@ import {
   isHandleAvailable,
 } from '../lib/userProfile';
 import { Skeleton, ErrorCard } from './StatesSystem';
+import {
+  validateAndOptimizeImage,
+  sanitizeText,
+  sanitizeStringArray,
+} from '../lib/security';
 
 interface EditPortraitScreenProps {
   onNavigate: (path: string) => void;
@@ -155,32 +160,36 @@ export default function EditPortraitScreen({
   // 4. Bio character counter
   const bioCount = form?.bio?.length || 0;
 
-  // Handlers for Photo upload
-  const handlePhotoUpload = (slot: 'primary' | 'secondary', file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      if (!result || !form) return;
-      haptics.impact('medium');
+  // Handlers for Photo upload with validation and optimization
+  const handlePhotoUpload = async (slot: 'primary' | 'secondary', file: File) => {
+    setSaveError(null);
+    const result = await validateAndOptimizeImage(file, slot === 'primary' ? 800 : 1200);
 
-      if (slot === 'primary') {
-        const photos = [...(form.photos || [])];
-        photos[0] = result;
-        setForm({
-          ...form,
-          avatarUrl: result,
-          photos,
-        });
-      } else {
-        const photos = [...(form.photos || [])];
-        photos[1] = result;
-        setForm({
-          ...form,
-          photos,
-        });
-      }
-    };
-    reader.readAsDataURL(file);
+    if (!result.valid || !result.dataUrl) {
+      setSaveError(result.error || 'Failed to process photo.');
+      haptics.notification('error');
+      return;
+    }
+
+    if (!form) return;
+    haptics.impact('medium');
+
+    if (slot === 'primary') {
+      const photos = [...(form.photos || [])];
+      photos[0] = result.dataUrl;
+      setForm({
+        ...form,
+        avatarUrl: result.dataUrl,
+        photos,
+      });
+    } else {
+      const photos = [...(form.photos || [])];
+      photos[1] = result.dataUrl;
+      setForm({
+        ...form,
+        photos,
+      });
+    }
   };
 
   const handleRemovePhoto = (slot: 'primary' | 'secondary') => {
@@ -335,10 +344,27 @@ export default function EditPortraitScreen({
     haptics.impact('medium');
 
     try {
-      // Simulate clean ~400ms storage write
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      saveCurrentUserProfile(form);
-      setInitialProfile(JSON.parse(JSON.stringify(form)));
+      // Sanitize all profile fields
+      const sanitizedForm: GalleryMember = {
+        ...form,
+        fullName: sanitizeText(form.fullName),
+        handle: sanitizeText(form.handle).toLowerCase().replace(/^@/, ''),
+        location: sanitizeText(form.location),
+        bio: sanitizeText(form.bio),
+        tags: sanitizeStringArray(form.tags),
+        bridges: form.bridges?.map((b) => ({
+          ...b,
+          label: sanitizeText(b.label),
+          maskedHint: sanitizeText(b.maskedHint),
+          unmaskedValue: b.unmaskedValue ? sanitizeText(b.unmaskedValue) : undefined,
+        })),
+      };
+
+      // Clean async storage write
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      saveCurrentUserProfile(sanitizedForm);
+      setForm(sanitizedForm);
+      setInitialProfile(JSON.parse(JSON.stringify(sanitizedForm)));
 
       setIsSaving(false);
       setIsSavedSuccess(true);

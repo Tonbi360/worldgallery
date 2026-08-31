@@ -12,10 +12,13 @@ import {
   Instagram,
   Globe,
   MessageSquare,
+  AlertCircle,
 } from 'lucide-react';
 import { haptics } from '../lib/haptics';
 import { GalleryMember, ContactBridge } from '../types/gallery';
 import { SentRequest } from '../types/activity';
+import { sanitizeText, checkClientRateLimit, recordClientAction } from '../lib/security';
+import { dbInsertConnectionRequest } from '../lib/dataService';
 
 interface ConnectSheetProps {
   member: GalleryMember;
@@ -38,18 +41,31 @@ export default function ConnectSheet({
   const [note, setNote] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSuccessMorphed, setIsSuccessMorphed] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
 
   const charCount = note.length;
   const maxChars = 140;
 
   const handleSend = () => {
-    if (!note.trim() || isSending || isSuccessMorphed) return;
+    const cleanNote = sanitizeText(note);
+    if (!cleanNote.trim() || isSending || isSuccessMorphed) return;
+
+    // Rate Limiting Check: Max 5 connection requests per hour
+    const rateCheck = checkClientRateLimit('connect', 5);
+    if (!rateCheck.allowed) {
+      setRateLimitError(`Bridge limit reached. Please wait ${Math.ceil(rateCheck.retryAfterSec / 60)}m before reaching out to more members.`);
+      haptics.notification('error');
+      return;
+    }
+
+    setRateLimitError(null);
     haptics.impact('light');
     setIsSending(true);
 
     setTimeout(() => {
       setIsSending(false);
       setIsSuccessMorphed(true);
+      recordClientAction('connect');
       haptics.notification('success');
 
       // 1. Persist pending connection handle in localStorage
@@ -64,25 +80,34 @@ export default function ConnectSheet({
         // ignore
       }
 
-      // 2. Persist new sent request object in localStorage for /sent
+      // 2. Insert into connection_requests database table
+      const bridgeObj = bridges.find((b) => b.type === selectedBridge);
+      dbInsertConnectionRequest({
+        requesterId: 'current_user',
+        receiverId: member.handle || member.id,
+        requestedChannel: bridgeObj?.type || 'email',
+        senderOfferedChannel: 'email',
+        note: cleanNote,
+      }).catch((err) => console.warn('[Database] Async connection request insert notice:', err));
+
+      // 3. Persist new sent request object in localStorage for /sent
       try {
         const storedSent = localStorage.getItem('wg_sent_requests');
         const sentList: SentRequest[] = storedSent ? JSON.parse(storedSent) : [];
-        const bridgeObj = bridges.find((b) => b.type === selectedBridge);
         const newSent: SentRequest = {
           id: `sent-${Date.now()}`,
-          recipientHandle: member.handle,
-          recipientName: member.fullName,
+          recipientHandle: sanitizeText(member.handle),
+          recipientName: sanitizeText(member.fullName),
           recipientAvatarBg: member.avatarBg,
           recipientAvatarUrl: member.avatarUrl,
-          note: note.trim(),
+          note: cleanNote,
           channelLabel: bridgeObj?.label || 'Direct Bridge',
           channelType: bridgeObj?.type || 'email',
           sentDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           mySharedContact: {
             type: 'email',
             label: 'Email',
-            value: 'tonbara@walden.org',
+            value: 'member@worldgallery.org',
           },
           status: 'pending',
           expiresInDays: 7,
@@ -271,6 +296,14 @@ export default function ConnectSheet({
                     className="w-full bg-[#F2F2F7] border border-ios-separator/50 rounded-2xl p-3.5 font-sans text-[15px] text-ios-text placeholder:text-ios-secondary/60 outline-none focus:border-ios-forest/50 focus:bg-white transition-all resize-none"
                   />
                 </div>
+
+                {/* Rate Limit Alert */}
+                {rateLimitError && (
+                  <div className="flex items-start gap-2 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl p-3 text-[13px] text-[#991B1B]">
+                    <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0 mt-0.5" />
+                    <span>{rateLimitError}</span>
+                  </div>
+                )}
 
                 {/* Send CTA Button */}
                 <div className="pt-2">

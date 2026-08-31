@@ -38,6 +38,7 @@ import {
   getCuratorTelemetry,
   getDailyApprovalCount,
 } from '../lib/curatorStore';
+import { getAdminEmail } from '../lib/security';
 
 interface AdminDashboardProps {
   onNavigate: (path: string) => void;
@@ -256,7 +257,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
 
           <div className="pt-4">
             <span className="font-mono text-[11.5px] text-ios-secondary/60">
-              Identity: curator@worldgallery.org
+              Identity: {getAdminEmail()}
             </span>
           </div>
         </div>

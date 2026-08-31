@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft,
@@ -27,8 +27,10 @@ import { getAllGalleryMembers, getCurrentUserProfile } from '../lib/userProfile'
 import { Skeleton, ErrorCard } from './StatesSystem';
 import ConnectSheet from './ConnectSheet';
 import ReportSheet from './ReportSheet';
-import PhotoViewerModal from './PhotoViewerModal';
 import BridgeActionRow from './BridgeActionRow';
+
+// Lazy-load photo viewer modal for reduced initial bundle footprint
+const PhotoViewerModal = lazy(() => import('./PhotoViewerModal'));
 
 interface ProfileDetailProps {
   handle: string;
@@ -546,11 +548,13 @@ export default function ProfileDetail({
             isOpen={isReportOpen}
             onClose={() => setIsReportOpen(false)}
           />
-          <PhotoViewerModal
-            photos={photos}
-            isOpen={isPhotoViewerOpen}
-            onClose={() => setIsPhotoViewerOpen(false)}
-          />
+          <Suspense fallback={null}>
+            <PhotoViewerModal
+              photos={photos}
+              isOpen={isPhotoViewerOpen}
+              onClose={() => setIsPhotoViewerOpen(false)}
+            />
+          </Suspense>
         </>
       )}
     </main>

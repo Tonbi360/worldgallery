@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { auditEnvironmentVariables } from './lib/security';
 
 // Code-split routes for fast bundle parsing and publishing
 const LandingPage = lazy(() => import('./components/LandingPage'));
@@ -28,8 +30,11 @@ export default function App() {
   const [currentPath, setCurrentPath] = useState<string>('/');
   const [navigationDirection, setNavigationDirection] = useState<'forward' | 'backward'>('forward');
 
-  // Initialize and synchronize with browser URL history
+  // Initialize, audit environment, and synchronize with browser URL history
   useEffect(() => {
+    // Run environment validation
+    auditEnvironmentVariables();
+
     if (typeof window !== 'undefined') {
       const initialPath = window.location.pathname || '/';
       setCurrentPath(initialPath);
@@ -208,9 +213,11 @@ export default function App() {
             }}
             className="w-full h-full min-h-[100dvh]"
           >
-            <Suspense fallback={<RouteLoadingFallback />}>
-              {renderView()}
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                {renderView()}
+              </Suspense>
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </div>

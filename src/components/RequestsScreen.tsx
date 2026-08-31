@@ -14,6 +14,8 @@ import BridgeActionRow from './BridgeActionRow';
 import {
   IncomingRequest,
 } from '../types/activity';
+import { dbGetIncomingRequestsForReceiver } from '../lib/dataService';
+import { getCurrentUserProfile } from '../lib/userProfile';
 
 interface RequestsScreenProps {
   onBack: () => void;
@@ -29,27 +31,37 @@ export default function RequestsScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [requests, setRequests] = useState<IncomingRequest[]>([]);
 
-  // Load from localStorage
+  // Load from database with local storage fallback
   useEffect(() => {
     haptics.impact('light');
     setIsLoading(true);
 
-    try {
-      const stored = localStorage.getItem('wg_incoming_requests');
-      if (stored) {
-        setRequests(JSON.parse(stored));
-      } else {
+    const loadData = async () => {
+      try {
+        const current = getCurrentUserProfile();
+        const receiverId = current.handle || current.id || 'current_user';
+        const dbIncoming = await dbGetIncomingRequestsForReceiver(receiverId);
+
+        if (dbIncoming && dbIncoming.length > 0) {
+          setRequests(dbIncoming);
+          setIsLoading(false);
+          return;
+        }
+
+        const stored = localStorage.getItem('wg_incoming_requests');
+        if (stored) {
+          setRequests(JSON.parse(stored));
+        } else {
+          setRequests([]);
+        }
+      } catch {
         setRequests([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      setRequests([]);
-    }
+    };
 
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 450);
-
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
 
   // Update parent and localStorage on change

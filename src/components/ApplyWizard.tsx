@@ -290,29 +290,30 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
   const cleanInviteCode = draft.inviteCode.trim().toUpperCase();
   const step4Valid = isInviteMode ? cleanInviteCode.length >= 3 : true;
 
-  // Photo upload handling
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Photo upload handling with MIME validation, 5MB limit, and image optimization
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert('Photo must be less than 8MB');
+    setPhotoUploadError(null);
+    const result = await validateAndOptimizeImage(file, 800);
+
+    if (!result.valid || !result.dataUrl) {
+      setPhotoUploadError(result.error || 'Failed to process image.');
+      haptics.notification('error');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        haptics.notification('success');
-        updateDraft({ avatarUrl: event.target.result });
-      }
-    };
-    reader.readAsDataURL(file);
+    haptics.notification('success');
+    updateDraft({ avatarUrl: result.dataUrl });
   };
 
   // Tag input handling
   const handleAddTag = (raw: string) => {
-    const clean = raw.trim().replace(/^#/, '').toLowerCase();
+    const clean = sanitizeText(raw).replace(/^#/, '').toLowerCase();
     if (!clean) return;
     if (draft.tags.includes(clean)) {
       setTagInput('');
@@ -369,6 +370,15 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
   const handleFinalSubmit = async () => {
     if (isSubmitting || isSubmitSuccess) return;
 
+    // Rate Limiting Check: Max 3 applications per hour per client
+    const rateCheck = checkClientRateLimit('apply', 3);
+    if (!rateCheck.allowed) {
+      setSubmitError(`Application limit reached. Please wait ${Math.ceil(rateCheck.retryAfterSec / 60)} minutes before submitting again.`);
+      haptics.notification('error');
+      return;
+    }
+
+    setSubmitError(null);
     haptics.impact('medium');
     setIsSubmitting(true);
 
@@ -379,9 +389,32 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
 
     const isCodeValid = isInviteMode && (!!matchingSeal || cleanInviteCode.length >= 3);
 
+    // Sanitize all inputs before saving
+    const sanitizedFullName = sanitizeText(draft.fullName);
+    const sanitizedHandle = sanitizeText(effectiveHandle).toLowerCase();
+    const sanitizedLocation = sanitizeText(draft.location);
+    const sanitizedBio = sanitizeText(draft.bio);
+    const sanitizedTags = sanitizeStringArray(draft.tags);
+    const sanitizedBridges = draft.bridges.map((b) => ({
+      ...b,
+      customTypeName: b.customTypeName ? sanitizeText(b.customTypeName) : undefined,
+      value: sanitizeText(b.value),
+    }));
+
+    // Record client submission
+    recordClientAction('apply');
+
     // Save submitted applicant & clear saved draft
     try {
-      localStorage.setItem('wg_submitted_applicant_v1', JSON.stringify(draft));
+      localStorage.setItem('wg_submitted_applicant_v1', JSON.stringify({
+        ...draft,
+        fullName: sanitizedFullName,
+        handle: sanitizedHandle,
+        location: sanitizedLocation,
+        bio: sanitizedBio,
+        tags: sanitizedTags,
+        bridges: sanitizedBridges,
+      }));
       localStorage.removeItem(DRAFT_STORAGE_KEY);
 
       if (isCodeValid) {
@@ -389,7 +422,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
         if (matchingSeal) {
           const updatedSeals = activeSeals.map((s) =>
             s.id === matchingSeal.id
-              ? { ...s, status: 'used' as const, usedByHandle: effectiveHandle, usedAt: new Date().toISOString() }
+              ? { ...s, status: 'used' as const, usedByHandle: sanitizedHandle, usedAt: new Date().toISOString() }
               : s
           );
           saveInviteSeals(updatedSeals);
@@ -397,18 +430,18 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
 
         // Initialize user profile as verified member
         const newMember: GalleryMember = {
-          id: `mem-${effectiveHandle}`,
-          fullName: draft.fullName,
-          handle: effectiveHandle,
-          location: draft.location,
-          bio: draft.bio,
-          tags: draft.tags,
+          id: `mem-${sanitizedHandle}`,
+          fullName: sanitizedFullName,
+          handle: sanitizedHandle,
+          location: sanitizedLocation,
+          bio: sanitizedBio,
+          tags: sanitizedTags,
           availability: draft.availability,
           avatarBg: draft.avatarBg,
           avatarUrl: draft.avatarUrl,
           photos: draft.avatarUrl ? [draft.avatarUrl] : [],
           cohort: 'Cohort 2026',
-          bridges: draft.bridges.map((b) => ({
+          bridges: sanitizedBridges.map((b) => ({
             type: b.type,
             label: CHANNEL_CONFIGS[b.type]?.label || b.customTypeName || b.type,
             maskedHint: maskContactValue(b.type, b.value),
@@ -421,11 +454,11 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
         // Enqueue into pending applicants for curator desk review
         const pendingApplicant: PendingApplicant = {
           id: `app-${Date.now()}`,
-          fullName: draft.fullName,
-          handle: effectiveHandle,
-          location: draft.location,
-          bio: draft.bio,
-          tags: draft.tags,
+          fullName: sanitizedFullName,
+          handle: sanitizedHandle,
+          location: sanitizedLocation,
+          bio: sanitizedBio,
+          tags: sanitizedTags,
           availability: draft.availability,
           avatarBg: draft.avatarBg,
           avatarUrl: draft.avatarUrl,
@@ -433,7 +466,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
           appliedAt: new Date().toISOString(),
           entryType: isInviteMode ? 'invite' : 'queue',
           status: 'pending',
-          bridges: draft.bridges.map((b) => ({
+          bridges: sanitizedBridges.map((b) => ({
             type: b.type,
             label: CHANNEL_CONFIGS[b.type]?.label || b.customTypeName || b.type,
             maskedHint: maskContactValue(b.type, b.value),
@@ -733,6 +766,12 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
                   >
                     {draft.avatarUrl ? 'Change photo' : 'Upload photo'}
                   </button>
+
+                  {photoUploadError && (
+                    <p className="font-sans text-[12px] text-[#DC2626] mt-1 text-center font-medium">
+                      {photoUploadError}
+                    </p>
+                  )}
 
                   {/* 16-Color Palette Swatch Row with leading padding */}
                   <div className="w-full overflow-x-auto py-2.5 mt-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -1279,6 +1318,12 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
                     World Gallery is curated by humans, for humans. No algorithms, no ads.
                   </p>
                 </div>
+
+                {submitError && (
+                  <div className="mb-4 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl p-3 text-[13px] text-[#991B1B] text-center font-medium">
+                    {submitError}
+                  </div>
+                )}
 
                 {/* In-Flow Submit Application Button */}
                 <div className="pt-2 pb-6 safe-area-bottom">

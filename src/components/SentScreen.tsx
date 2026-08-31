@@ -12,6 +12,8 @@ import { haptics } from '../lib/haptics';
 import { Skeleton } from './StatesSystem';
 import BridgeActionRow from './BridgeActionRow';
 import { SentRequest } from '../types/activity';
+import { dbGetSentRequestsForRequester } from '../lib/dataService';
+import { getCurrentUserProfile } from '../lib/userProfile';
 
 interface SentScreenProps {
   onBack: () => void;
@@ -26,22 +28,32 @@ export default function SentScreen({ onBack, onNavigate }: SentScreenProps) {
     haptics.impact('light');
     setIsLoading(true);
 
-    try {
-      const stored = localStorage.getItem('wg_sent_requests');
-      if (stored) {
-        setSentList(JSON.parse(stored));
-      } else {
+    const loadData = async () => {
+      try {
+        const current = getCurrentUserProfile();
+        const requesterId = current.handle || current.id || 'current_user';
+        const dbSent = await dbGetSentRequestsForRequester(requesterId);
+
+        if (dbSent && dbSent.length > 0) {
+          setSentList(dbSent);
+          setIsLoading(false);
+          return;
+        }
+
+        const stored = localStorage.getItem('wg_sent_requests');
+        if (stored) {
+          setSentList(JSON.parse(stored));
+        } else {
+          setSentList([]);
+        }
+      } catch {
         setSentList([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      setSentList([]);
-    }
+    };
 
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 450);
-
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
 
   return (
