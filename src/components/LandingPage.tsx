@@ -6,6 +6,8 @@ import { ShieldCheck, Handshake, Sprout, X } from 'lucide-react';
 import { haptics } from '../lib/haptics';
 import { getInviteSeals } from '../lib/curatorStore';
 
+const BUILD_STAMP = 'WG-2026-09-02-A';
+
 interface ManifestoCard {
   id: string;
   icon: typeof ShieldCheck;
@@ -455,6 +457,10 @@ export default function LandingPage({ onNavigate }: LandingPageProps = {}) {
         >
           Already a member? Sign In
         </button>
+
+        <span className="font-mono text-[9.5px] text-ios-secondary/40 select-none pb-0.5 tracking-wider">
+          {BUILD_STAMP}
+        </span>
       </motion.div>
 
       {/* Fast Pass iOS Bottom Sheet with stable visualViewport linear tracking */}

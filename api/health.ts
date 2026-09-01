@@ -1,3 +1,5 @@
+export const BUILD_STAMP = 'WG-2026-09-02-A';
+
 export default async function handler(req: any, res: any) {
   try {
     // 1. Safe CORS & Header configuration
@@ -81,6 +83,7 @@ export default async function handler(req: any, res: any) {
 
     const payload = {
       ok: true,
+      build: BUILD_STAMP,
       node: typeof process !== 'undefined' ? process.version : 'unknown',
       env: envPresence,
       db: dbConnected ? 'connected' : (dbError || dbStatus),
@@ -102,6 +105,7 @@ export default async function handler(req: any, res: any) {
     const firstStackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
     const fallbackPayload = {
       ok: false,
+      build: BUILD_STAMP,
       error: firstStackLine ? `${message} | at ${firstStackLine}` : message,
       node: typeof process !== 'undefined' ? process.version : 'unknown',
       env: {
