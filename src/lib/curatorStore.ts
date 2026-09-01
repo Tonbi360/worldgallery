@@ -57,7 +57,10 @@ export function setCuratorAuthenticated(value: boolean, email?: string): void {
       JSON.stringify({
         email: currentAdminEmail,
         role: 'curator',
-        name: 'The Curator',
+        name: 'Tonbara Timinipre Destiny',
+        handle: 'tonbi360',
+        memberNumber: '#0001',
+        member_number: '#0001',
       })
     );
   } else {

@@ -6,7 +6,7 @@ import { ShieldCheck, Handshake, Sprout, X } from 'lucide-react';
 import { haptics } from '../lib/haptics';
 import { getInviteSeals } from '../lib/curatorStore';
 
-const BUILD_STAMP = 'WG-2026-09-02-B';
+const BUILD_STAMP = 'WG-2026-09-02-C';
 
 interface ManifestoCard {
   id: string;

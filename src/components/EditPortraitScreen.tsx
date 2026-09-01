@@ -129,11 +129,38 @@ export default function EditPortraitScreen({
   const [isSavedSuccess, setIsSavedSuccess] = useState(false);
 
   // 1. Initial Load & Skeleton Simulation
+  const sessionInfo = useMemo(() => {
+    if (typeof window === 'undefined') return { name: '', handle: '', isCurator: false, memberNumber: '' };
+    try {
+      const raw = localStorage.getItem('wg_user_session');
+      const session = raw ? JSON.parse(raw) : null;
+      const isCurator =
+        session?.role === 'curator' ||
+        localStorage.getItem('wg_curator_session_authenticated') === 'true' ||
+        localStorage.getItem('wg_admin_session_authenticated') === 'true';
+      return {
+        name: session?.name || (isCurator ? 'Tonbara Timinipre Destiny' : ''),
+        handle: (session?.handle || (isCurator ? 'tonbi360' : '')).replace(/^@/, ''),
+        isCurator,
+        memberNumber: session?.member_number || session?.memberNumber || (isCurator ? '#0001' : ''),
+      };
+    } catch {
+      return { name: '', handle: '', isCurator: false, memberNumber: '' };
+    }
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       const profile = getCurrentUserProfile();
-      setInitialProfile(JSON.parse(JSON.stringify(profile)));
-      setForm(JSON.parse(JSON.stringify(profile)));
+      const initialized = {
+        ...profile,
+        fullName: profile.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Tonbara Timinipre Destiny' : ''),
+        handle: profile.handle || sessionInfo.handle || (sessionInfo.isCurator ? 'tonbi360' : ''),
+        cohort: profile.cohort || (sessionInfo.isCurator ? 'Founder & Curator' : 'Cohort 2026'),
+        memberNumber: profile.memberNumber || sessionInfo.memberNumber || (sessionInfo.isCurator ? '#0001' : ''),
+      };
+      setInitialProfile(JSON.parse(JSON.stringify(initialized)));
+      setForm(JSON.parse(JSON.stringify(initialized)));
       setInitialLoading(false);
     }, 320);
 
@@ -1345,7 +1372,7 @@ export default function EditPortraitScreen({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div
-                    style={{ backgroundColor: form.avatarBg || '#2D6A4F' }}
+                    style={{ backgroundColor: form.avatarBg || '#1C1C1E' }}
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white font-serif font-bold text-sm"
                   >
                     W
@@ -1355,51 +1382,49 @@ export default function EditPortraitScreen({
                       World Gallery Pass
                     </span>
                     <span className="font-mono text-[11px] text-white/60">
-                      {form.cohort || 'Cohort 2026'}
+                      {form.cohort || (sessionInfo.isCurator ? 'Founding Curator' : 'Cohort 2026')}
                     </span>
                   </div>
                 </div>
 
                 <span className="font-mono text-[13px] font-extrabold text-[#34C759] bg-[#34C759]/15 px-2.5 py-1 rounded-full border border-[#34C759]/30">
-                  {form.memberNumber || '#0001'}
+                  {form.memberNumber || sessionInfo.memberNumber || (sessionInfo.isCurator ? '#0001' : '#0001')}
                 </span>
               </div>
 
               {/* Pass Holder Centerpiece */}
               <div className="flex flex-col items-center text-center space-y-3 py-2">
                 <div
-                  style={{ backgroundColor: form.avatarBg || '#2D6A4F' }}
+                  style={{ backgroundColor: form.avatarBg || '#1C1C1E' }}
                   className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white font-serif text-3xl font-bold shadow-xl ring-4 ring-white/10"
                 >
                   {form.avatarUrl ? (
                     <img
                       src={form.avatarUrl}
-                      alt={form.fullName}
+                      alt={form.fullName || sessionInfo.name || 'Member Pass'}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <span>
-                      {form.fullName
-                        ? form.fullName
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)
-                            .toUpperCase()
-                        : 'WG'}
+                      {(form.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Tonbara Timinipre Destiny' : 'Founding Curator'))
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </span>
                   )}
                 </div>
 
                 <div>
                   <h3 className="font-sans font-extrabold text-[20px] text-white">
-                    {form.fullName}
+                    {form.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Tonbara Timinipre Destiny' : 'Founding Curator')}
                   </h3>
                   <p className="font-mono text-[13px] text-[#34C759]">
-                    @{form.handle}
+                    @{form.handle || sessionInfo.handle || (sessionInfo.isCurator ? 'tonbi360' : 'curator')}
                   </p>
                   <p className="font-sans text-[12.5px] text-white/60 mt-0.5">
-                    {form.location}
+                    {form.location || (sessionInfo.isCurator ? 'London & Global' : '')}
                   </p>
                 </div>
               </div>

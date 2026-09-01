@@ -41,6 +41,7 @@ import {
   getDailyApprovalCount,
 } from '../lib/curatorStore';
 import { getAdminEmail } from '../lib/security';
+import { saveCurrentUserProfile } from '../lib/userProfile';
 
 interface AdminDashboardProps {
   onNavigate: (path: string) => void;
@@ -155,6 +156,12 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
           setIsAuthenticating(false);
           haptics.notification('success');
           setCuratorAuthenticated(true, adminEmail);
+          if (data.user) {
+            localStorage.setItem('wg_user_session', JSON.stringify(data.user));
+          }
+          if (data.profile) {
+            saveCurrentUserProfile(data.profile);
+          }
           setIsAuthenticated(true);
           setPasscode('');
           refreshData();

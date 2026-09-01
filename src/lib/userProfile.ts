@@ -8,15 +8,15 @@ export const USER_PROFILE_UPDATE_EVENT = 'wg_user_profile_updated';
 export const ALL_MEMBERS_STORAGE_KEY = 'wg_all_gallery_members';
 
 export const DEFAULT_CURRENT_USER: GalleryMember = {
-  id: 'mem-default',
-  fullName: 'Gallery Member',
-  handle: 'member',
+  id: 'mem-user',
+  fullName: '',
+  handle: '',
   location: '',
   bio: '',
   tags: [],
   availability: 'open',
-  avatarBg: '#2D6A4F',
-  memberNumber: '#0001',
+  avatarBg: '#1C1C1E',
+  memberNumber: '',
   cohort: 'Cohort 2026',
   photos: [],
   bridges: [],
@@ -25,31 +25,102 @@ export const DEFAULT_CURRENT_USER: GalleryMember = {
 export function sanitizeMember(member: GalleryMember): GalleryMember {
   return {
     ...member,
-    fullName: sanitizeText(member.fullName),
-    handle: sanitizeText(member.handle).toLowerCase().replace(/^@/, ''),
-    location: sanitizeText(member.location),
-    bio: sanitizeText(member.bio),
-    tags: sanitizeStringArray(member.tags),
+    fullName: sanitizeText(member.fullName || ''),
+    handle: sanitizeText(member.handle || '').toLowerCase().replace(/^@/, ''),
+    location: sanitizeText(member.location || ''),
+    bio: sanitizeText(member.bio || ''),
+    tags: sanitizeStringArray(member.tags || []),
     bridges: member.bridges?.map((b) => ({
       ...b,
-      label: sanitizeText(b.label),
-      maskedHint: sanitizeText(b.maskedHint),
+      label: sanitizeText(b.label || ''),
+      maskedHint: sanitizeText(b.maskedHint || ''),
       unmaskedValue: b.unmaskedValue ? sanitizeText(b.unmaskedValue) : undefined,
-    })),
+    })) || [],
   };
 }
 
 export function getCurrentUserProfile(): GalleryMember {
   if (typeof window === 'undefined') return DEFAULT_CURRENT_USER;
+
+  let sessionName = '';
+  let sessionHandle = '';
+  let sessionRole = '';
+  let sessionMemberNumber = '';
+
+  try {
+    const rawSession = localStorage.getItem('wg_user_session');
+    if (rawSession) {
+      const session = JSON.parse(rawSession);
+      sessionName = session?.name || '';
+      sessionHandle = (session?.handle || '').replace(/^@/, '');
+      sessionRole = session?.role || '';
+      sessionMemberNumber = session?.member_number || session?.memberNumber || '';
+    }
+  } catch {
+    // Ignore
+  }
+
+  const isCurator =
+    sessionRole === 'curator' ||
+    localStorage.getItem('wg_curator_session_authenticated') === 'true' ||
+    localStorage.getItem('wg_admin_session_authenticated') === 'true';
+
   try {
     const stored = localStorage.getItem(CURRENT_USER_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return sanitizeMember({ ...DEFAULT_CURRENT_USER, ...parsed });
+      // Purge obsolete placeholder texts if they were previously persisted
+      if (parsed.fullName === 'Gallery Member') parsed.fullName = '';
+      if (parsed.handle === 'member') parsed.handle = '';
+
+      const sanitized = sanitizeMember({ ...DEFAULT_CURRENT_USER, ...parsed });
+
+      if (!sanitized.fullName && (sessionName || isCurator)) {
+        sanitized.fullName = isCurator ? (sessionName || 'Tonbara Timinipre Destiny') : sessionName;
+      }
+      if (!sanitized.handle && (sessionHandle || isCurator)) {
+        sanitized.handle = isCurator ? (sessionHandle || 'tonbi360') : sessionHandle;
+      }
+      if (isCurator) {
+        sanitized.memberNumber = sanitized.memberNumber || sessionMemberNumber || '#0001';
+        sanitized.cohort = sanitized.cohort || 'Founder & Curator';
+        sanitized.avatarBg = sanitized.avatarBg || '#1C1C1E';
+      } else if (sessionMemberNumber && !sanitized.memberNumber) {
+        sanitized.memberNumber = sessionMemberNumber;
+      }
+
+      return sanitized;
     }
   } catch (err) {
     console.error('Failed to parse current user profile:', err);
   }
+
+  // If no stored profile row yet, construct real identity from active session
+  if (isCurator) {
+    return sanitizeMember({
+      ...DEFAULT_CURRENT_USER,
+      id: 'usr_curator',
+      fullName: sessionName || 'Tonbara Timinipre Destiny',
+      handle: sessionHandle || 'tonbi360',
+      memberNumber: sessionMemberNumber || '#0001',
+      cohort: 'Founder & Curator',
+      avatarBg: '#1C1C1E',
+      bio: 'Founder and Curator of World Gallery.',
+      location: 'London & Global',
+      tags: ['founder', 'curator'],
+    });
+  }
+
+  if (sessionName || sessionHandle) {
+    return sanitizeMember({
+      ...DEFAULT_CURRENT_USER,
+      fullName: sessionName,
+      handle: sessionHandle,
+      memberNumber: sessionMemberNumber || undefined,
+      cohort: 'Cohort 2026',
+    });
+  }
+
   return DEFAULT_CURRENT_USER;
 }
 
@@ -114,6 +185,9 @@ export function getAllGalleryMembers(): GalleryMember[] {
       baseList = [];
     }
   }
+
+  // Filter out any legacy placeholder records
+  baseList = baseList.filter((m) => m.handle !== 'member' && m.fullName !== 'Gallery Member');
 
   const current = getCurrentUserProfile();
 

@@ -12,6 +12,8 @@ if (typeof window !== 'undefined') {
         .register('/sw.js', { scope: '/' })
         .then((reg) => {
           console.log('[PWA] Service Worker registered with scope:', reg.scope);
+          // Check for fresh SW script immediately on load
+          reg.update().catch(() => {});
         })
         .catch((err) => {
           console.error('[PWA] Service Worker registration failed:', err);

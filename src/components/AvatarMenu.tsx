@@ -173,7 +173,7 @@ export default function AvatarMenu({
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="font-sans font-semibold text-[14.5px] text-ios-text truncate leading-tight">
-                    {userProfile.fullName || 'Tonbara Destiny'}
+                    {userProfile.fullName || 'Tonbara Timinipre Destiny'}
                   </span>
                   <span className="font-sans text-[12.5px] text-ios-secondary truncate">
                     @{userProfile.handle || 'tonbi360'}

@@ -216,15 +216,6 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
     }
   };
 
-  // Switcher for Demo / Testing
-  const handleSetState = (newState: WaitingState) => {
-    haptics.selection();
-    setWaitingState(newState);
-    if (newState === 'approved') {
-      haptics.notification('success');
-    }
-  };
-
   // Handle Refine & Resubmit (Loads draft back into wizard at Step 2)
   const handleRefineAndResubmit = () => {
     haptics.selection();

@@ -23,7 +23,7 @@ export default async function handler(req: any, res: any) {
       const rows = await sql`
         SELECT * FROM profiles
         WHERE status = 'active'
-        ORDER BY created_at DESC
+        ORDER BY member_number ASC, created_at ASC
       `;
 
       const profiles = rows.map((p: any) => ({

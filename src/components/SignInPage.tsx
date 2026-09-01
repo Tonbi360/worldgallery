@@ -7,6 +7,7 @@ import { BrandLoader } from './BrandLoader';
 import { haptics } from '../lib/haptics';
 import { getAdminEmail, sanitizeText } from '../lib/security';
 import { dbVerifyUserCredentials } from '../lib/dataService';
+import { saveCurrentUserProfile } from '../lib/userProfile';
 
 interface SignInPageProps {
   onNavigate: (path: string) => void;
@@ -118,6 +119,9 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
         const data = await response.json();
         if (data.verified && data.user) {
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+          if (data.profile) {
+            saveCurrentUserProfile(data.profile);
+          }
           if (data.user.role === 'curator') {
             localStorage.setItem('wg_curator_session_authenticated', 'true');
             handleAuthSuccess('/admin');

@@ -1,5 +1,6 @@
 // Service Worker for World Gallery PWA
-const CACHE_NAME = 'wg-pwa-v4';
+const BUILD_STAMP = 'WG-2026-09-02-C';
+const CACHE_NAME = `wg-pwa-${BUILD_STAMP}`;
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -26,16 +27,21 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              console.log('[PWA SW] Purging old cache:', key);
+              return caches.delete(key);
+            }
+          })
+        );
+      })
+      .then(() => self.clients.claim())
   );
 });
 
@@ -51,9 +57,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Network-first for html/navigation to ensure newly deployed bundles are served immediately
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return caches.match('/') || caches.match('/index.html') || new Response('Network offline', { status: 503, statusText: 'Offline' });
+        })
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
+      return fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -61,14 +90,7 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        if (event.request.mode === 'navigate') {
-          return caches.match('/') || caches.match('/index.html');
-        }
-        return new Response('Network offline', { status: 503, statusText: 'Offline' });
-      })
+      });
+    })
   );
 });
