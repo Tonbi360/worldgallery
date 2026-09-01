@@ -1,5 +1,5 @@
 // Service Worker for World Gallery PWA
-const BUILD_STAMP = 'WG-2026-09-02-C';
+const BUILD_STAMP = 'WG-2026-09-02-D';
 const CACHE_NAME = `wg-pwa-${BUILD_STAMP}`;
 const STATIC_ASSETS = [
   '/',

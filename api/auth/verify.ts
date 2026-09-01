@@ -1,11 +1,132 @@
 import { getApiDb, setCorsHeaders, sendJson, sendError } from '../_lib/db';
 
+async function executeSelfTest(res: any) {
+  const steps: Array<{ step: string; ok: boolean; error?: string | null; [key: string]: any }> = [];
+
+  // Step 1: handler_loaded
+  steps.push({ step: 'handler_loaded', ok: true });
+
+  // Step 2: bcrypt_import
+  try {
+    const bcryptMod = await import('bcryptjs');
+    const bcrypt = (bcryptMod as any).default || bcryptMod;
+    if (!bcrypt || typeof bcrypt.hash !== 'function') {
+      throw new Error('bcryptjs has no hash function');
+    }
+    const hash = await bcrypt.hash('selftest_probe', 4);
+    const valid = await bcrypt.compare('selftest_probe', hash);
+    if (!valid) throw new Error('bcrypt comparison validation failed');
+    steps.push({ step: 'bcrypt_import', ok: true, error: null });
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    const stack = (err?.stack || '').split('\n')[1]?.trim() || '';
+    steps.push({ step: 'bcrypt_import', ok: false, error: stack ? `${msg} (${stack})` : msg });
+  }
+
+  // Step 3: neon_import
+  let neonFn: any = null;
+  try {
+    const neonMod = await import('@neondatabase/serverless');
+    neonFn = (neonMod as any).neon || neonMod;
+    if (typeof neonFn !== 'function') {
+      throw new Error('neon is not a function in @neondatabase/serverless');
+    }
+    steps.push({ step: 'neon_import', ok: true, error: null });
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    const stack = (err?.stack || '').split('\n')[1]?.trim() || '';
+    steps.push({ step: 'neon_import', ok: false, error: stack ? `${msg} (${stack})` : msg });
+  }
+
+  // Step 4: db_connect
+  let sql: any = null;
+  try {
+    const dbUrl = (
+      (typeof process !== 'undefined' && (process.env.DATABASE_URL || process.env.POSTGRES_URL)) ||
+      ''
+    ).trim();
+
+    if (!dbUrl) {
+      steps.push({ step: 'db_connect', ok: false, error: 'DATABASE_URL environment variable is missing' });
+    } else if (!neonFn) {
+      steps.push({ step: 'db_connect', ok: false, error: 'Skipped: neon_import failed' });
+    } else {
+      sql = neonFn(dbUrl);
+      const ping = await sql`SELECT 1 as connected`;
+      if (!ping || ping.length === 0) {
+        throw new Error('SELECT 1 query returned no results');
+      }
+      steps.push({ step: 'db_connect', ok: true, error: null });
+    }
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    const stack = (err?.stack || '').split('\n')[1]?.trim() || '';
+    steps.push({ step: 'db_connect', ok: false, error: stack ? `${msg} (${stack})` : msg });
+  }
+
+  // Step 5: users_select
+  try {
+    if (!sql) {
+      steps.push({ step: 'users_select', ok: false, error: 'Skipped: db_connect failed' });
+    } else {
+      await sql`SELECT count(*)::int as count FROM users`;
+      steps.push({ step: 'users_select', ok: true, error: null });
+    }
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    const stack = (err?.stack || '').split('\n')[1]?.trim() || '';
+    steps.push({ step: 'users_select', ok: false, error: stack ? `${msg} (${stack})` : msg });
+  }
+
+  // Step 6: profiles_select
+  try {
+    if (!sql) {
+      steps.push({ step: 'profiles_select', ok: false, error: 'Skipped: db_connect failed' });
+    } else {
+      await sql`SELECT count(*)::int as count FROM profiles`;
+      steps.push({ step: 'profiles_select', ok: true, error: null });
+    }
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    const stack = (err?.stack || '').split('\n')[1]?.trim() || '';
+    steps.push({ step: 'profiles_select', ok: false, error: stack ? `${msg} (${stack})` : msg });
+  }
+
+  try {
+    if (res && typeof res.setHeader === 'function') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Content-Type', 'application/json');
+    }
+    if (res && typeof res.status === 'function') {
+      return res.status(200).json(steps);
+    }
+    if (res) {
+      res.statusCode = 200;
+      if (typeof res.end === 'function') {
+        return res.end(JSON.stringify(steps));
+      }
+    }
+  } catch {
+    // Header send fallback
+  }
+  return steps;
+}
+
 export default async function handler(req: any, res: any) {
   try {
     setCorsHeaders(res, req?.headers?.origin);
 
     if (req?.method === 'OPTIONS') {
       return res.status ? res.status(200).end() : res.end();
+    }
+
+    const isSelfTest =
+      req?.query?.selftest === '1' ||
+      req?.query?.selftest === 'true' ||
+      String(req?.url || '').includes('selftest=1');
+
+    if (isSelfTest) {
+      return executeSelfTest(res);
     }
 
     if (req?.method !== 'POST') {
@@ -129,7 +250,7 @@ export default async function handler(req: any, res: any) {
           const inserted = await sql`
             INSERT INTO profiles (
               id, user_id, full_name, handle, member_number, cohort,
-              availability, status, location, bio, tags, avatar_bg, bridges, created_at, updated_at
+              availability, status, location, bio, tags, avatar_bg, bridges, created_at
             ) VALUES (
               ${curatorProfileId},
               ${curatorUserId},
@@ -144,7 +265,6 @@ export default async function handler(req: any, res: any) {
               ${JSON.stringify(['founder', 'curator', 'craft'])},
               '#1C1C1E',
               ${JSON.stringify([])},
-              NOW(),
               NOW()
             )
             RETURNING *
