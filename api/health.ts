@@ -3,87 +3,115 @@ import { sql } from 'drizzle-orm';
 
 export default async function handler(req: any, res: any) {
   try {
+    // 1. Safe CORS & Header configuration
     try {
-      setCorsHeaders(res, req?.headers?.origin);
+      if (res && typeof res.setHeader === 'function') {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Content-Type', 'application/json');
+      }
     } catch {
-      // CORS header setting safety fallback
+      // Header safety catch
     }
 
     if (req?.method === 'OPTIONS') {
-      return res.status ? res.status(200).end() : res.end();
+      if (res?.status && typeof res.status === 'function') {
+        return res.status(200).end();
+      }
+      return res?.end ? res.end() : null;
     }
 
-    if (req?.method && req.method !== 'GET') {
-      return res.status(405).json({ ok: false, error: 'Method not allowed' });
-    }
-
-    const databaseUrl = (
-      process.env.DATABASE_URL ||
-      process.env.POSTGRES_URL ||
+    // 2. Read environment presence purely via process.env
+    const rawDbUrl = (
+      (typeof process !== 'undefined' && (process.env.DATABASE_URL || process.env.POSTGRES_URL)) ||
       ''
     ).trim();
 
-    const isDbConfigured = Boolean(databaseUrl);
+    const rawAdminEmail = (
+      (typeof process !== 'undefined' && (process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL)) ||
+      ''
+    ).trim();
 
-    let dbStatus: string = 'not_connected';
-    const counts = {
+    const rawAdminPasscode = (
+      (typeof process !== 'undefined' && (process.env.ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE)) ||
+      ''
+    ).trim();
+
+    const envPresence = {
+      DATABASE_URL: rawDbUrl ? 'present' : 'missing',
+      ADMIN_EMAIL: rawAdminEmail ? 'present' : 'missing',
+      ADMIN_PASSCODE: rawAdminPasscode ? 'present' : 'missing',
+    };
+
+    // 3. Isolated DB connectivity check via dynamic import
+    let dbStatus = rawDbUrl ? 'untested' : 'missing DATABASE_URL';
+    let dbConnected = false;
+    let counts = {
       users: 0,
       profiles: 0,
       connection_requests: 0,
     };
+    let dbError: string | null = null;
 
-    if (!isDbConfigured) {
-      dbStatus = 'missing DATABASE_URL (or POSTGRES_URL) environment variable';
-    } else {
+    if (rawDbUrl) {
       try {
-        const db = getApiDb();
-        if (!db) {
-          dbStatus = 'database client initialization failed (check DATABASE_URL connection string format)';
-        } else {
-          const [userRes, profileRes, connRes] = await Promise.all([
-            db.select({ count: sql<number>`count(*)` }).from(schema.users),
-            db.select({ count: sql<number>`count(*)` }).from(schema.profiles),
-            db.select({ count: sql<number>`count(*)` }).from(schema.connection_requests),
-          ]);
+        const { neon } = await import('@neondatabase/serverless');
+        const sql = neon(rawDbUrl);
 
-          counts.users = Number(userRes[0]?.count) || 0;
-          counts.profiles = Number(profileRes[0]?.count) || 0;
-          counts.connection_requests = Number(connRes[0]?.count) || 0;
-          dbStatus = 'connected';
-        }
-      } catch (dbErr: any) {
-        const message = dbErr?.message || String(dbErr);
-        const stackLine = (dbErr?.stack || '').split('\n')[1]?.trim() || '';
-        dbStatus = `db error: ${message}${stackLine ? ` (${stackLine})` : ''}`;
+        const [userRows, profileRows, connRows] = await Promise.all([
+          sql`SELECT count(*)::int as count FROM users`.catch(() => [{ count: 0 }]),
+          sql`SELECT count(*)::int as count FROM profiles`.catch(() => [{ count: 0 }]),
+          sql`SELECT count(*)::int as count FROM connection_requests`.catch(() => [{ count: 0 }]),
+        ]);
+
+        counts = {
+          users: Number((userRows as any)?.[0]?.count) || 0,
+          profiles: Number((profileRows as any)?.[0]?.count) || 0,
+          connection_requests: Number((connRows as any)?.[0]?.count) || 0,
+        };
+
+        dbStatus = 'connected';
+        dbConnected = true;
+      } catch (err: any) {
+        dbConnected = false;
+        const msg = err?.message || String(err);
+        const stackLine = (err?.stack || '').split('\n')[1]?.trim() || '';
+        dbError = stackLine ? `${msg} (${stackLine})` : msg;
+        dbStatus = `db error: ${dbError}`;
       }
     }
 
-    const responsePayload = {
-      ok: dbStatus === 'connected',
-      db: dbStatus,
+    const payload = {
+      ok: true,
+      node: typeof process !== 'undefined' ? process.version : 'unknown',
+      env: envPresence,
+      db: dbConnected ? 'connected' : (dbError || dbStatus),
       counts,
-      env: {
-        has_database_url: isDbConfigured,
-        has_admin_email: Boolean(process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL),
-        has_admin_passcode: Boolean(process.env.ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE),
-        has_resend_api_key: Boolean(process.env.RESEND_API_KEY),
-      },
     };
 
     if (res && typeof res.status === 'function') {
-      return res.status(200).json(responsePayload);
+      return res.status(200).json(payload);
     }
-    if (res && typeof res.setHeader === 'function') {
-      res.setHeader('Content-Type', 'application/json');
+    if (res) {
+      res.statusCode = 200;
+      if (typeof res.end === 'function') {
+        return res.end(JSON.stringify(payload));
+      }
     }
-    res.statusCode = 200;
-    return res.end(JSON.stringify(responsePayload));
-  } catch (err: any) {
-    const message = err?.message || String(err);
-    const firstStackLine = (err?.stack || '').split('\n')[1]?.trim() || '';
-    const errPayload = {
+    return payload;
+  } catch (fatalErr: any) {
+    const message = fatalErr?.message || String(fatalErr);
+    const firstStackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    const fallbackPayload = {
       ok: false,
       error: firstStackLine ? `${message} | at ${firstStackLine}` : message,
+      node: typeof process !== 'undefined' ? process.version : 'unknown',
+      env: {
+        DATABASE_URL: 'error_evaluating',
+        ADMIN_EMAIL: 'error_evaluating',
+        ADMIN_PASSCODE: 'error_evaluating',
+      },
       db: 'handler_crashed',
       counts: {
         users: 0,
@@ -94,21 +122,19 @@ export default async function handler(req: any, res: any) {
 
     try {
       if (res && typeof res.status === 'function') {
-        return res.status(200).json(errPayload);
+        return res.status(200).json(fallbackPayload);
       }
-      if (res && typeof res.setHeader === 'function') {
-        res.setHeader('Content-Type', 'application/json');
-      }
-      res.statusCode = 200;
-      return res.end(JSON.stringify(errPayload));
-    } catch {
-      try {
+      if (res) {
         res.statusCode = 200;
-        return res.end(JSON.stringify(errPayload));
-      } catch {
-        // safety
+        if (typeof res.end === 'function') {
+          return res.end(JSON.stringify(fallbackPayload));
+        }
       }
+    } catch {
+      // Ignore
     }
+    return fallbackPayload;
   }
 }
+
 

@@ -126,24 +126,66 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     setTelemetry(getCuratorTelemetry());
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setIsAuthenticating(true);
 
-    setTimeout(() => {
-      const success = authenticateCurator(passcode);
+    try {
+      const cleanPasscode = passcode.trim();
+      const adminEmail = getAdminEmail().toLowerCase().trim();
+
+      // Check server authentication endpoint
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminEmail, passcode: cleanPasscode }),
+      }).catch(() => null);
+
+      if (response && response.status >= 500) {
+        setIsAuthenticating(false);
+        haptics.notification('error');
+        setAuthError("The gallery couldn't be reached. Try again.");
+        return;
+      }
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data.verified) {
+          setIsAuthenticating(false);
+          haptics.notification('success');
+          setCuratorAuthenticated(true, adminEmail);
+          setIsAuthenticated(true);
+          setPasscode('');
+          refreshData();
+          return;
+        }
+      }
+
+      // Fallback for local sandbox / dev testing
+      const localSuccess = authenticateCurator(cleanPasscode);
       setIsAuthenticating(false);
-      if (success) {
+
+      if (localSuccess) {
         haptics.notification('success');
         setIsAuthenticated(true);
         setPasscode('');
         refreshData();
       } else {
         haptics.notification('error');
-        setAuthError('The passcode is not recognized by the registry.');
+        if (!response && !navigator.onLine) {
+          setAuthError("No connection. Check your internet and try again.");
+        } else if (!response) {
+          setAuthError("The gallery couldn't be reached. Try again.");
+        } else {
+          setAuthError('The passcode is not recognized by the registry.');
+        }
       }
-    }, 250);
+    } catch {
+      setIsAuthenticating(false);
+      haptics.notification('error');
+      setAuthError("The gallery couldn't be reached. Try again.");
+    }
   };
 
   const handleLogout = () => {

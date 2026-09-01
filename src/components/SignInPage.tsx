@@ -22,7 +22,7 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [errorType, setErrorType] = useState<'' | 'invalid' | 'restricted' | 'network'>('');
+  const [errorType, setErrorType] = useState<'' | 'invalid' | 'restricted' | 'network' | 'unreachable'>('');
   const [isShaking, setIsShaking] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
 
@@ -129,7 +129,16 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
         }
       }
 
-      // If server returned 401 or invalid credentials
+      // If server returned 5xx or serverless crashed
+      if (response && response.status >= 500) {
+        setLoading(false);
+        setErrorType('unreachable');
+        haptics.notification('error');
+        triggerShake();
+        return;
+      }
+
+      // If server returned 401 or explicit unauthorized
       if (response && response.status === 401) {
         setLoading(false);
         setErrorType('invalid');
@@ -159,14 +168,23 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
         }
       }
 
-      // In PROD or when verification fails:
+      // If no response was received (network failure or serverless timed out)
+      if (!response) {
+        setLoading(false);
+        setErrorType(navigator.onLine ? 'unreachable' : 'network');
+        haptics.notification('error');
+        triggerShake();
+        return;
+      }
+
+      // Any other non-200 / 4xx non-401 response
       setLoading(false);
-      setErrorType(response ? 'invalid' : 'network');
+      setErrorType(response.status === 403 ? 'restricted' : 'invalid');
       haptics.notification('error');
       triggerShake();
     } catch {
       setLoading(false);
-      setErrorType('network');
+      setErrorType(navigator.onLine ? 'unreachable' : 'network');
       haptics.notification('error');
       triggerShake();
     }
@@ -308,6 +326,7 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
               className="font-sans text-[13px] font-semibold text-ios-red text-left px-1 mt-2.5"
             >
               {errorType === 'invalid' && 'Incorrect email or password.'}
+              {errorType === 'unreachable' && "The gallery couldn't be reached. Try again."}
               {errorType === 'network' && 'No connection. Check your internet and try again.'}
               {errorType === 'restricted' && 'This account is restricted. The Curator can help.'}
             </motion.p>
