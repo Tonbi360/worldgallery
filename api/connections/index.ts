@@ -12,18 +12,17 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 405, 'Method not allowed');
     }
 
-    let dbContext;
+    let sql: any;
     try {
-      dbContext = await getApiDb();
+      sql = await getApiDb();
     } catch (dbErr: any) {
       return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
-    if (!dbContext) {
+    if (!sql) {
       return sendError(res, 503, 'Database unavailable');
     }
 
-    const { db, schema } = dbContext;
     const body = req.body || {};
     const requesterId = String(body.requesterId || '').trim();
     const receiverId = String(body.receiverId || '').trim();
@@ -39,22 +38,18 @@ export default async function handler(req: any, res: any) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const inserted = await db
-      .insert(schema.connection_requests)
-      .values({
-        id: newId,
-        requester_id: requesterId,
-        receiver_id: receiverId,
-        requested_channel: requestedChannel,
-        sender_offered_channel: senderOfferedChannel,
-        note: note,
-        status: 'pending',
-        created_at: now,
-        expires_at: expiresAt,
-      })
-      .returning();
+    const rows = await sql`
+      INSERT INTO connection_requests (
+        id, requester_id, receiver_id, requested_channel, sender_offered_channel,
+        note, status, created_at, expires_at
+      ) VALUES (
+        ${newId}, ${requesterId}, ${receiverId}, ${requestedChannel}, ${senderOfferedChannel},
+        ${note}, 'pending', ${now.toISOString()}, ${expiresAt.toISOString()}
+      )
+      RETURNING *
+    `;
 
-    return sendJson(res, 200, { ok: true, success: true, request: inserted[0] });
+    return sendJson(res, 200, { ok: true, success: true, request: rows[0] });
   } catch (fatalErr: any) {
     const message = fatalErr?.message || String(fatalErr);
     const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';

@@ -675,32 +675,6 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
           )}
         </AnimatePresence>
       </div>
-
-      {/* 3. Discreet TEMP Demo Switcher Bar (DEV Mode Only — Never Rendered in Production) */}
-      {import.meta.env.DEV && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 bg-ios-card/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-ios-separator/60 flex items-center gap-1.5 max-w-[92%]">
-          <span className="font-mono text-[10px] font-bold uppercase text-ios-secondary/70 mr-1">
-            TEMP:
-          </span>
-          {(['pending', 'approved', 'rejected'] as const).map((mode) => {
-            const isActive = waitingState === mode;
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => handleSetState(mode)}
-                className={`font-sans text-[11.5px] font-semibold px-2.5 py-1 rounded-full capitalize transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-ios-text text-white shadow-2xs'
-                    : 'text-ios-secondary hover:text-ios-text bg-transparent'
-                }`}
-              >
-                {mode}
-              </button>
-            );
-          })}
-        </div>
-      )}
     </main>
   );
 }

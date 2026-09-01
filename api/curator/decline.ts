@@ -18,36 +18,27 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 401, auth.error || 'Unauthorized: Curator credentials required');
     }
 
-    // Dynamic import of drizzle-orm inside handler
-    let drizzleOrm: typeof import('drizzle-orm');
+    let sql: any;
     try {
-      drizzleOrm = await import('drizzle-orm');
-    } catch (importErr: any) {
-      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
-    }
-    const { eq } = drizzleOrm;
-
-    let dbContext;
-    try {
-      dbContext = await getApiDb();
+      sql = await getApiDb();
     } catch (dbErr: any) {
       return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
-    if (!dbContext) {
+    if (!sql) {
       return sendError(res, 503, 'Database unavailable');
     }
 
-    const { db, schema } = dbContext;
     const { applicantId } = req.body || {};
     if (!applicantId) {
       return sendError(res, 400, 'Applicant ID is required');
     }
 
-    await db
-      .update(schema.profiles)
-      .set({ status: 'rejected' })
-      .where(eq(schema.profiles.id, applicantId));
+    await sql`
+      UPDATE profiles
+      SET status = 'rejected'
+      WHERE id = ${applicantId}
+    `;
 
     return sendJson(res, 200, { ok: true, success: true });
   } catch (fatalErr: any) {

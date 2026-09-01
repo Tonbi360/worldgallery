@@ -21,15 +21,6 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 500, `Failed to load bcryptjs module: ${importErr?.message || String(importErr)}`);
     }
 
-    // Dynamic import of drizzle-orm inside handler
-    let drizzleOrm: typeof import('drizzle-orm');
-    try {
-      drizzleOrm = await import('drizzle-orm');
-    } catch (importErr: any) {
-      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
-    }
-    const { eq } = drizzleOrm;
-
     const { email, passcode } = req.body || {};
     const cleanEmail = String(email || '').toLowerCase().trim();
     const rawPasscode = String(passcode || '').trim();
@@ -51,16 +42,16 @@ export default async function handler(req: any, res: any) {
 
     const isCuratorEmail = Boolean(configuredAdminEmail && cleanEmail === configuredAdminEmail);
 
-    // Initialize Database
-    let dbContext;
+    // Initialize raw Neon SQL client
+    let sql: any;
     try {
-      dbContext = await getApiDb();
+      sql = await getApiDb();
     } catch (dbLoadErr: any) {
       return sendError(res, 500, `Database connection error: ${dbLoadErr?.message || String(dbLoadErr)}`);
     }
 
     // Fallback when DB is not configured
-    if (!dbContext) {
+    if (!sql) {
       if (isCuratorEmail && configuredAdminPasscode && rawPasscode === configuredAdminPasscode) {
         return sendJson(res, 200, {
           ok: true,
@@ -81,8 +72,6 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    const { db, schema } = dbContext;
-
     // Curator Authentication Flow with Self-Healing Reconciliation
     if (isCuratorEmail) {
       if (!configuredAdminPasscode || rawPasscode !== configuredAdminPasscode) {
@@ -90,13 +79,8 @@ export default async function handler(req: any, res: any) {
       }
 
       // Valid passcode from ENV provided!
-      // Check database users table for this email
-      const userRows = await db
-        .select()
-        .from(schema.users)
-        .where(eq(schema.users.email, cleanEmail))
-        .limit(1);
-
+      // Check database users table for this email using raw neon SQL
+      const userRows = await sql`SELECT * FROM users WHERE email = ${cleanEmail} LIMIT 1`;
       const u = userRows[0];
 
       if (u) {
@@ -112,10 +96,7 @@ export default async function handler(req: any, res: any) {
         if (!hashMatches) {
           try {
             const freshHash = await bcrypt.hash(configuredAdminPasscode, 10);
-            await db
-              .update(schema.users)
-              .set({ password_hash: freshHash, role: 'curator' })
-              .where(eq(schema.users.id, u.id));
+            await sql`UPDATE users SET password_hash = ${freshHash}, role = 'curator' WHERE id = ${u.id}`;
           } catch (reconcileErr) {
             console.error('[Curator Reconcile Error]', reconcileErr);
           }
@@ -124,12 +105,8 @@ export default async function handler(req: any, res: any) {
         // Self-healing: create curator user row in database
         try {
           const freshHash = await bcrypt.hash(configuredAdminPasscode, 10);
-          await db.insert(schema.users).values({
-            id: `usr_curator_${Date.now()}`,
-            email: configuredAdminEmail,
-            password_hash: freshHash,
-            role: 'curator',
-          });
+          const curatorUserId = `usr_curator_${Date.now()}`;
+          await sql`INSERT INTO users (id, email, password_hash, role, created_at) VALUES (${curatorUserId}, ${configuredAdminEmail}, ${freshHash}, 'curator', NOW())`;
         } catch (insertErr) {
           console.error('[Curator Insert Error]', insertErr);
         }
@@ -148,12 +125,8 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Standard Member Authentication Flow
-    const userRows = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.email, cleanEmail))
-      .limit(1);
+    // Standard Member Authentication Flow using raw neon SQL
+    const userRows = await sql`SELECT * FROM users WHERE email = ${cleanEmail} LIMIT 1`;
 
     if (!userRows || userRows.length === 0) {
       return sendJson(res, 401, { ok: false, verified: false, error: 'No account found matching this email address.' });
@@ -173,13 +146,8 @@ export default async function handler(req: any, res: any) {
     }
 
     // Fetch profile
-    const profileRows = await db
-      .select()
-      .from(schema.profiles)
-      .where(eq(schema.profiles.user_id, u.id))
-      .limit(1);
-
-    const profile = profileRows[0];
+    const profileRows = await sql`SELECT * FROM profiles WHERE user_id = ${u.id} LIMIT 1`;
+    const profile = profileRows[0] || null;
 
     return sendJson(res, 200, {
       ok: true,
@@ -191,7 +159,22 @@ export default async function handler(req: any, res: any) {
         handle: profile?.handle || '',
         name: profile?.full_name || 'Gallery Member',
       },
-      profile,
+      profile: profile ? {
+        id: profile.id,
+        fullName: profile.full_name,
+        handle: profile.handle,
+        location: profile.location || '',
+        bio: profile.bio || '',
+        tags: typeof profile.tags === 'string' ? JSON.parse(profile.tags) : profile.tags || [],
+        availability: profile.availability || 'open',
+        avatarBg: profile.avatar_bg || '#2D6A4F',
+        avatarUrl: profile.avatar_primary || undefined,
+        photos: [profile.avatar_primary, profile.avatar_secondary].filter(Boolean),
+        memberNumber: profile.member_number || undefined,
+        cohort: profile.cohort || 'Cohort 2026',
+        bridges: typeof profile.bridges === 'string' ? JSON.parse(profile.bridges) : profile.bridges || [],
+        status: profile.status || 'active',
+      } : null,
     });
   } catch (fatalErr: any) {
     const message = fatalErr?.message || String(fatalErr);

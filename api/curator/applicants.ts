@@ -18,33 +18,22 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 401, auth.error || 'Unauthorized: Curator credentials required');
     }
 
-    // Dynamic import of drizzle-orm inside handler
-    let drizzleOrm: typeof import('drizzle-orm');
+    let sql: any;
     try {
-      drizzleOrm = await import('drizzle-orm');
-    } catch (importErr: any) {
-      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
-    }
-    const { eq, desc } = drizzleOrm;
-
-    let dbContext;
-    try {
-      dbContext = await getApiDb();
+      sql = await getApiDb();
     } catch (dbErr: any) {
       return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
-    if (!dbContext) {
+    if (!sql) {
       return sendError(res, 503, 'Database unavailable');
     }
 
-    const { db, schema } = dbContext;
-
-    const rows = await db
-      .select()
-      .from(schema.profiles)
-      .where(eq(schema.profiles.status, 'pending'))
-      .orderBy(desc(schema.profiles.created_at));
+    const rows = await sql`
+      SELECT * FROM profiles
+      WHERE status = 'pending'
+      ORDER BY created_at DESC
+    `;
 
     const applicants = rows.map((p: any) => ({
       id: p.id,
@@ -52,12 +41,12 @@ export default async function handler(req: any, res: any) {
       handle: p.handle,
       location: p.location || '',
       bio: p.bio || '',
-      tags: p.tags || [],
+      tags: typeof p.tags === 'string' ? JSON.parse(p.tags) : p.tags || [],
       availability: p.availability || 'open',
       avatarBg: p.avatar_bg || '#2D6A4F',
       avatarUrl: p.avatar_primary || undefined,
       photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean),
-      bridges: p.bridges || [],
+      bridges: typeof p.bridges === 'string' ? JSON.parse(p.bridges) : p.bridges || [],
       appliedAt: p.created_at ? new Date(p.created_at).toISOString() : new Date().toISOString(),
       entryType: 'queue',
       status: 'pending',

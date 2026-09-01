@@ -12,27 +12,17 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 405, 'Method not allowed');
     }
 
-    // Dynamic import of drizzle-orm inside handler
-    let drizzleOrm: typeof import('drizzle-orm');
+    let sql: any;
     try {
-      drizzleOrm = await import('drizzle-orm');
-    } catch (importErr: any) {
-      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
-    }
-    const { eq, desc } = drizzleOrm;
-
-    let dbContext;
-    try {
-      dbContext = await getApiDb();
+      sql = await getApiDb();
     } catch (dbErr: any) {
       return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
-    if (!dbContext) {
+    if (!sql) {
       return sendError(res, 503, 'Database unavailable');
     }
 
-    const { db, schema } = dbContext;
     const { requesterId } = req.query || {};
     const cleanRequesterId = String(requesterId || '').trim();
 
@@ -40,11 +30,11 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 400, 'requesterId parameter is required');
     }
 
-    const rows = await db
-      .select()
-      .from(schema.connection_requests)
-      .where(eq(schema.connection_requests.requester_id, cleanRequesterId))
-      .orderBy(desc(schema.connection_requests.created_at));
+    const rows = await sql`
+      SELECT * FROM connection_requests
+      WHERE requester_id = ${cleanRequesterId}
+      ORDER BY created_at DESC
+    `;
 
     const sent = rows.map((r: any) => {
       const daysLeft = r.expires_at

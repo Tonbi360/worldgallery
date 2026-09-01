@@ -1,6 +1,10 @@
 let cachedConnectionString: string | null = null;
-let cachedDbInstance: any = null;
+let cachedSqlInstance: any = null;
 
+/**
+ * Returns the raw Neon SQL tagged-template client.
+ * Zero drizzle-orm or schema imports to ensure runtime stability in Vercel serverless.
+ */
 export async function getApiDb() {
   const connectionString = (
     (typeof process !== 'undefined' && (process.env.DATABASE_URL || process.env.POSTGRES_URL)) ||
@@ -11,23 +15,20 @@ export async function getApiDb() {
     return null;
   }
 
-  if (cachedDbInstance && cachedConnectionString === connectionString) {
-    return cachedDbInstance;
+  if (cachedSqlInstance && cachedConnectionString === connectionString) {
+    return cachedSqlInstance;
   }
 
   try {
     const { neon } = await import('@neondatabase/serverless');
-    const { drizzle } = await import('drizzle-orm/neon-http');
-    const schema = await import('./schema');
     const sql = neon(connectionString);
-    const db = drizzle(sql, { schema });
-    cachedDbInstance = { db, schema, sql };
+    cachedSqlInstance = sql;
     cachedConnectionString = connectionString;
-    return cachedDbInstance;
+    return cachedSqlInstance;
   } catch (err: any) {
     const msg = err?.message || String(err);
-    console.error('❌ [World Gallery Database] Dynamic import error in getApiDb:', err);
-    throw new Error(`Database client dynamic load failed (@neondatabase/serverless / drizzle-orm): ${msg}`);
+    console.error('❌ [World Gallery Database] Neon load error:', err);
+    throw new Error(`Failed to load @neondatabase/serverless: ${msg}`);
   }
 }
 
@@ -106,7 +107,6 @@ export function verifyCuratorApiAuth(req: any): { authorized: boolean; error?: s
     ).trim();
 
     if (!configuredAdminEmail || !configuredPasscode) {
-      // In dev mode when env is not set, allow graceful pass
       if (process.env.NODE_ENV === 'development' || (!process.env.DATABASE_URL && !process.env.POSTGRES_URL)) {
         return { authorized: true };
       }
@@ -145,4 +145,3 @@ export function verifyCuratorApiAuth(req: any): { authorized: boolean; error?: s
     return { authorized: false, error: `Auth verification error: ${err?.message || String(err)}` };
   }
 }
-

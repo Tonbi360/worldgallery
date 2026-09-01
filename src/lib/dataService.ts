@@ -151,7 +151,6 @@ export async function dbVerifyUserCredentials(
 ): Promise<{ verified: boolean; user?: { id: string; email: string; role: string; name?: string }; error?: string }> {
   const cleanEmail = sanitizeText(email).toLowerCase().trim();
 
-  // Try API route first if available
   try {
     const res = await fetch('/api/auth/verify', {
       method: 'POST',
@@ -159,41 +158,36 @@ export async function dbVerifyUserCredentials(
       body: JSON.stringify({ email: cleanEmail, passcode }),
     }).catch(() => null);
 
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data?.verified) {
-        return { verified: true, user: data.user };
-      }
+    if (!res) {
+      return {
+        verified: false,
+        error: navigator.onLine ? "The gallery couldn't be reached. Try again." : "No connection. Check your internet and try again.",
+      };
     }
-  } catch {
-    // Continue to client/env verification
-  }
 
-  // Fallback verification against configured curator credentials
-  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
-  const adminEmail = getAdminEmail().toLowerCase().trim();
-  const adminPasscode =
-    (typeof process !== 'undefined' && process.env?.ADMIN_PASSCODE) ||
-    metaEnv?.VITE_ADMIN_PASSCODE ||
-    'world2026';
+    if (res.status >= 500) {
+      return {
+        verified: false,
+        error: "The gallery couldn't be reached. Try again.",
+      };
+    }
 
-  const isCurator =
-    (cleanEmail === adminEmail || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
-    (passcode === adminPasscode || passcode === 'world2026');
+    const data = await res.json().catch(() => null);
 
-  if (isCurator) {
+    if (res.ok && data?.verified) {
+      return { verified: true, user: data.user };
+    }
+
     return {
-      verified: true,
-      user: {
-        id: 'usr_curator_tonbara',
-        email: cleanEmail,
-        role: 'curator',
-        name: 'The Curator',
-      },
+      verified: false,
+      error: data?.error || (res.status === 401 ? 'Incorrect email or password.' : "The gallery couldn't be reached. Try again."),
+    };
+  } catch {
+    return {
+      verified: false,
+      error: "The gallery couldn't be reached. Try again.",
     };
   }
-
-  return { verified: false, error: 'Invalid email or passcode.' };
 }
 
 // ==========================================

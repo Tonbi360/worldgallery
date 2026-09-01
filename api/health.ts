@@ -1,4 +1,4 @@
-export const BUILD_STAMP = 'WG-2026-09-02-A';
+export const BUILD_STAMP = 'WG-2026-09-02-B';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -43,7 +43,7 @@ export default async function handler(req: any, res: any) {
       ADMIN_PASSCODE: rawAdminPasscode ? 'present' : 'missing',
     };
 
-    // 3. Isolated DB connectivity check via dynamic import
+    // 3. Isolated DB connectivity check via dynamic import of neon
     let dbStatus = rawDbUrl ? 'untested' : 'missing DATABASE_URL';
     let dbConnected = false;
     let counts = {
