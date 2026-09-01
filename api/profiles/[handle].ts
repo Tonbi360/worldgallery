@@ -1,5 +1,4 @@
-import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
-import { eq, and } from 'drizzle-orm';
+import { getApiDb, setCorsHeaders, sendJson, sendError } from '../_lib/db';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -9,16 +8,32 @@ export default async function handler(req: any, res: any) {
       return res.status ? res.status(200).end() : res.end();
     }
 
-    const db = getApiDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
+    // Dynamic import of drizzle-orm inside handler
+    let drizzleOrm: typeof import('drizzle-orm');
+    try {
+      drizzleOrm = await import('drizzle-orm');
+    } catch (importErr: any) {
+      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
+    }
+    const { eq, and } = drizzleOrm;
+
+    let dbContext;
+    try {
+      dbContext = await getApiDb();
+    } catch (dbErr: any) {
+      return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
+    if (!dbContext) {
+      return sendError(res, 503, 'Database unavailable');
+    }
+
+    const { db, schema } = dbContext;
     const { handle } = req.query || {};
     const cleanHandle = String(handle || '').toLowerCase().replace(/^@/, '').trim();
 
     if (!cleanHandle) {
-      return res.status(400).json({ error: 'Handle is required' });
+      return sendError(res, 400, 'Handle is required');
     }
 
     const rows = await db
@@ -28,7 +43,7 @@ export default async function handler(req: any, res: any) {
       .limit(1);
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: 'Profile not found' });
+      return sendError(res, 404, 'Profile not found');
     }
 
     const p = rows[0];
@@ -48,9 +63,13 @@ export default async function handler(req: any, res: any) {
       bridges: p.bridges || [],
     };
 
-    return res.status(200).json({ success: true, data: profile });
-  } catch (error: any) {
-    console.error('[API /api/profiles/[handle]] Error:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return sendJson(res, 200, { ok: true, success: true, data: profile });
+  } catch (fatalErr: any) {
+    const message = fatalErr?.message || String(fatalErr);
+    const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    return sendJson(res, 500, {
+      ok: false,
+      error: stackLine ? `${message} | at ${stackLine}` : message,
+    });
   }
 }

@@ -1,5 +1,4 @@
-import { getApiDb, schema, setCorsHeaders, verifyCuratorApiAuth } from '../_lib/db';
-import { eq, sql } from 'drizzle-orm';
+import { getApiDb, setCorsHeaders, verifyCuratorApiAuth, sendJson, sendError } from '../_lib/db';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -10,23 +9,39 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req?.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return sendError(res, 405, 'Method not allowed');
     }
 
     // Server-side curator verification
     const auth = verifyCuratorApiAuth(req);
     if (!auth.authorized) {
-      return res.status(401).json({ error: auth.error || 'Unauthorized' });
+      return sendError(res, 401, auth.error || 'Unauthorized: Curator credentials required');
     }
 
-    const db = getApiDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
+    // Dynamic import of drizzle-orm inside handler
+    let drizzleOrm: typeof import('drizzle-orm');
+    try {
+      drizzleOrm = await import('drizzle-orm');
+    } catch (importErr: any) {
+      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
+    }
+    const { eq, sql } = drizzleOrm;
+
+    let dbContext;
+    try {
+      dbContext = await getApiDb();
+    } catch (dbErr: any) {
+      return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
+    if (!dbContext) {
+      return sendError(res, 503, 'Database unavailable');
+    }
+
+    const { db, schema } = dbContext;
     const { applicantId } = req.body || {};
     if (!applicantId) {
-      return res.status(400).json({ error: 'Applicant ID is required' });
+      return sendError(res, 400, 'Applicant ID is required');
     }
 
     const today = new Date().toISOString().slice(0, 10);
@@ -40,9 +55,7 @@ export default async function handler(req: any, res: any) {
 
     const currentDaily = dailyRecords[0]?.count || 0;
     if (currentDaily >= 10) {
-      return res.status(429).json({
-        error: 'Daily curation quota reached (10/10). The pace of welcoming resumes at dawn.',
-      });
+      return sendError(res, 429, 'Daily curation quota reached (10/10). The pace of welcoming resumes at dawn.');
     }
 
     // 2. Fetch applicant profile
@@ -53,7 +66,7 @@ export default async function handler(req: any, res: any) {
       .limit(1);
 
     if (!applicant || applicant.length === 0) {
-      return res.status(404).json({ error: 'Applicant not found' });
+      return sendError(res, 404, 'Applicant not found');
     }
 
     const p = applicant[0];
@@ -106,9 +119,13 @@ export default async function handler(req: any, res: any) {
       bridges: p.bridges || [],
     };
 
-    return res.status(200).json({ success: true, member });
-  } catch (error: any) {
-    console.error('[API /api/curator/approve] Error:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return sendJson(res, 200, { ok: true, success: true, member });
+  } catch (fatalErr: any) {
+    const message = fatalErr?.message || String(fatalErr);
+    const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    return sendJson(res, 500, {
+      ok: false,
+      error: stackLine ? `${message} | at ${stackLine}` : message,
+    });
   }
 }

@@ -1,6 +1,4 @@
-import { getApiDb, schema, setCorsHeaders } from './_lib/db';
-import { eq, sql } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
+import { getApiDb, setCorsHeaders, sendJson, sendError } from './_lib/db';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -11,16 +9,39 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req?.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return sendError(res, 405, 'Method not allowed');
     }
 
-    const db = getApiDb();
-    if (!db) {
-      return res.status(503).json({
-        error: 'Database is currently unavailable. Please verify DATABASE_URL is set in your deployment.',
-      });
+    // Dynamic import of bcryptjs inside handler
+    let bcrypt: typeof import('bcryptjs');
+    try {
+      const bcryptMod = await import('bcryptjs');
+      bcrypt = (bcryptMod as any).default || bcryptMod;
+    } catch (importErr: any) {
+      return sendError(res, 500, `Failed to load bcryptjs module: ${importErr?.message || String(importErr)}`);
     }
 
+    // Dynamic import of drizzle-orm inside handler
+    let drizzleOrm: typeof import('drizzle-orm');
+    try {
+      drizzleOrm = await import('drizzle-orm');
+    } catch (importErr: any) {
+      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
+    }
+    const { eq, sql } = drizzleOrm;
+
+    let dbContext;
+    try {
+      dbContext = await getApiDb();
+    } catch (dbLoadErr: any) {
+      return sendError(res, 500, `Database initialization error: ${dbLoadErr?.message || String(dbLoadErr)}`);
+    }
+
+    if (!dbContext) {
+      return sendError(res, 503, 'Database is currently unavailable. Please check DATABASE_URL in Vercel environment.');
+    }
+
+    const { db, schema } = dbContext;
     const body = req.body || {};
     const cleanFullName = String(body.fullName || '').trim();
     const cleanHandle = String(body.handle || '').toLowerCase().replace(/^@/, '').trim();
@@ -36,10 +57,10 @@ export default async function handler(req: any, res: any) {
     // Extract email from bridges or body or fallback to member handle
     const emailBridge = cleanBridges.find((b: any) => b.type === 'email' && b.value);
     const cleanEmail = String(body.email || emailBridge?.value || `${cleanHandle}@member.worldgallery.org`).toLowerCase().trim();
-    const rawPasscode = String(body.passcode || body.password || 'world2026').trim();
+    const rawPasscode = String(body.passcode || body.password || 'gallery2026').trim();
 
     if (!cleanFullName || !cleanHandle) {
-      return res.status(400).json({ error: 'Full name and handle are required.' });
+      return sendError(res, 400, 'Full name and handle are required.');
     }
 
     // 1. Check if handle is already taken in profiles table
@@ -50,7 +71,7 @@ export default async function handler(req: any, res: any) {
       .limit(1);
 
     if (existingHandle && existingHandle.length > 0) {
-      return res.status(400).json({ error: `The handle @${cleanHandle} is already registered.` });
+      return sendError(res, 400, `The handle @${cleanHandle} is already registered.`);
     }
 
     // 2. Check or create user record in users table
@@ -161,14 +182,19 @@ export default async function handler(req: any, res: any) {
       status: profileStatus,
     };
 
-    return res.status(200).json({
+    return sendJson(res, 200, {
+      ok: true,
       success: true,
       status: profileStatus,
       user: userSession,
       profile: memberProfile,
     });
-  } catch (error: any) {
-    console.error('[API /api/apply] Error registering applicant:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+  } catch (fatalErr: any) {
+    const message = fatalErr?.message || String(fatalErr);
+    const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    return sendJson(res, 500, {
+      ok: false,
+      error: stackLine ? `${message} | at ${stackLine}` : message,
+    });
   }
 }

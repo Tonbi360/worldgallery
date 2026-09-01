@@ -1,5 +1,4 @@
-import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
-import { eq, desc } from 'drizzle-orm';
+import { getApiDb, setCorsHeaders, sendJson, sendError } from '../_lib/db';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -9,10 +8,27 @@ export default async function handler(req: any, res: any) {
       return res.status ? res.status(200).end() : res.end();
     }
 
-    const db = getApiDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
+    // Dynamic import of drizzle-orm inside handler
+    let drizzleOrm: typeof import('drizzle-orm');
+    try {
+      drizzleOrm = await import('drizzle-orm');
+    } catch (importErr: any) {
+      return sendError(res, 500, `Failed to load drizzle-orm module: ${importErr?.message || String(importErr)}`);
     }
+    const { eq, desc } = drizzleOrm;
+
+    let dbContext;
+    try {
+      dbContext = await getApiDb();
+    } catch (dbErr: any) {
+      return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
+    }
+
+    if (!dbContext) {
+      return sendError(res, 503, 'Database unavailable');
+    }
+
+    const { db, schema } = dbContext;
 
     if (req.method === 'GET') {
       const rows = await db
@@ -21,7 +37,7 @@ export default async function handler(req: any, res: any) {
         .where(eq(schema.profiles.status, 'active'))
         .orderBy(desc(schema.profiles.created_at));
 
-      const profiles = rows.map((p) => ({
+      const profiles = rows.map((p: any) => ({
         id: p.id,
         fullName: p.full_name,
         handle: p.handle,
@@ -37,7 +53,7 @@ export default async function handler(req: any, res: any) {
         bridges: p.bridges || [],
       }));
 
-      return res.status(200).json({ success: true, data: profiles });
+      return sendJson(res, 200, { ok: true, success: true, data: profiles });
     }
 
     if (req.method === 'POST') {
@@ -46,7 +62,7 @@ export default async function handler(req: any, res: any) {
       const cleanName = String(body.fullName || '').trim();
 
       if (!cleanHandle || !cleanName) {
-        return res.status(400).json({ error: 'Handle and full name are required' });
+        return sendError(res, 400, 'Handle and full name are required');
       }
 
       const existing = await db
@@ -90,12 +106,16 @@ export default async function handler(req: any, res: any) {
         });
       }
 
-      return res.status(200).json({ success: true });
+      return sendJson(res, 200, { ok: true, success: true });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error: any) {
-    console.error('[API /api/profiles] Error:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return sendError(res, 405, 'Method not allowed');
+  } catch (fatalErr: any) {
+    const message = fatalErr?.message || String(fatalErr);
+    const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    return sendJson(res, 500, {
+      ok: false,
+      error: stackLine ? `${message} | at ${stackLine}` : message,
+    });
   }
 }

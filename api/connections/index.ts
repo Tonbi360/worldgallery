@@ -1,4 +1,4 @@
-import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
+import { getApiDb, setCorsHeaders, sendJson, sendError } from '../_lib/db';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -9,14 +9,21 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req?.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' });
+      return sendError(res, 405, 'Method not allowed');
     }
 
-    const db = getApiDb();
-    if (!db) {
-      return res.status(503).json({ error: 'Database unavailable' });
+    let dbContext;
+    try {
+      dbContext = await getApiDb();
+    } catch (dbErr: any) {
+      return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
     }
 
+    if (!dbContext) {
+      return sendError(res, 503, 'Database unavailable');
+    }
+
+    const { db, schema } = dbContext;
     const body = req.body || {};
     const requesterId = String(body.requesterId || '').trim();
     const receiverId = String(body.receiverId || '').trim();
@@ -25,7 +32,7 @@ export default async function handler(req: any, res: any) {
     const note = String(body.note || '').trim();
 
     if (!requesterId || !receiverId || !requestedChannel || !note) {
-      return res.status(400).json({ error: 'Missing required connection request fields' });
+      return sendError(res, 400, 'Missing required connection request fields');
     }
 
     const newId = body.id || `req_${Date.now()}`;
@@ -47,9 +54,13 @@ export default async function handler(req: any, res: any) {
       })
       .returning();
 
-    return res.status(200).json({ success: true, request: inserted[0] });
-  } catch (error: any) {
-    console.error('[API /api/connections] Error:', error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    return sendJson(res, 200, { ok: true, success: true, request: inserted[0] });
+  } catch (fatalErr: any) {
+    const message = fatalErr?.message || String(fatalErr);
+    const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    return sendJson(res, 500, {
+      ok: false,
+      error: stackLine ? `${message} | at ${stackLine}` : message,
+    });
   }
 }

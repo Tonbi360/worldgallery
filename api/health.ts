@@ -1,6 +1,3 @@
-import { getApiDb, schema, setCorsHeaders } from './_lib/db';
-import { sql } from 'drizzle-orm';
-
 export default async function handler(req: any, res: any) {
   try {
     // 1. Safe CORS & Header configuration
@@ -136,5 +133,3 @@ export default async function handler(req: any, res: any) {
     return fallbackPayload;
   }
 }
-
-

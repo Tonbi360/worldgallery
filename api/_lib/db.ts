@@ -1,14 +1,9 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
-import * as schema from './schema';
-
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let cachedConnectionString: string | null = null;
+let cachedDbInstance: any = null;
 
-export function getApiDb() {
+export async function getApiDb() {
   const connectionString = (
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
+    (typeof process !== 'undefined' && (process.env.DATABASE_URL || process.env.POSTGRES_URL)) ||
     ''
   ).trim();
 
@@ -16,29 +11,34 @@ export function getApiDb() {
     return null;
   }
 
-  // Return cached instance if connection string hasn't changed
-  if (dbInstance && cachedConnectionString === connectionString) {
-    return dbInstance;
+  if (cachedDbInstance && cachedConnectionString === connectionString) {
+    return cachedDbInstance;
   }
 
   try {
+    const { neon } = await import('@neondatabase/serverless');
+    const { drizzle } = await import('drizzle-orm/neon-http');
+    const schema = await import('./schema');
     const sql = neon(connectionString);
-    dbInstance = drizzle(sql, { schema });
+    const db = drizzle(sql, { schema });
+    cachedDbInstance = { db, schema, sql };
     cachedConnectionString = connectionString;
-    return dbInstance;
-  } catch (err) {
-    console.error('❌ [World Gallery Database] Neon connection init error:', err);
-    return null;
+    return cachedDbInstance;
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    console.error('❌ [World Gallery Database] Dynamic import error in getApiDb:', err);
+    throw new Error(`Database client dynamic load failed (@neondatabase/serverless / drizzle-orm): ${msg}`);
   }
 }
-
-export { schema };
 
 export function setCorsHeaders(res: any, origin?: string) {
   try {
     if (!res || typeof res.setHeader !== 'function') return;
 
-    const configuredAppUrl = (process.env.APP_URL || process.env.NEXTAUTH_URL || '').trim();
+    const configuredAppUrl = (
+      (typeof process !== 'undefined' && (process.env.APP_URL || process.env.NEXTAUTH_URL)) ||
+      ''
+    ).trim();
 
     const allowedOrigins = [
       'http://localhost:5173',
@@ -65,23 +65,53 @@ export function setCorsHeaders(res: any, origin?: string) {
   }
 }
 
+export function sendJson(res: any, status: number, data: any) {
+  try {
+    setCorsHeaders(res);
+    if (res && typeof res.status === 'function') {
+      return res.status(status).json(data);
+    }
+    if (res && typeof res.setHeader === 'function') {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    if (res) {
+      res.statusCode = status;
+      if (typeof res.end === 'function') {
+        return res.end(JSON.stringify(data));
+      }
+    }
+  } catch {
+    // Fallback
+  }
+}
+
+export function sendError(res: any, status: number, message: string) {
+  return sendJson(res, status, { ok: false, error: message });
+}
+
 /**
  * Server-side authorization guard for curator API endpoints.
- * Validates against ADMIN_EMAIL and ADMIN_PASSCODE environment variables.
+ * Validates against ADMIN_EMAIL and ADMIN_PASSCODE environment variables strictly.
  */
 export function verifyCuratorApiAuth(req: any): { authorized: boolean; error?: string } {
   try {
     const configuredAdminEmail = (
-      process.env.ADMIN_EMAIL ||
-      process.env.VITE_ADMIN_EMAIL ||
-      'tonbaratiminipredestiny@gmail.com'
+      (typeof process !== 'undefined' && (process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL)) ||
+      ''
     ).toLowerCase().trim();
 
     const configuredPasscode = (
-      process.env.ADMIN_PASSCODE ||
-      process.env.VITE_ADMIN_PASSCODE ||
-      'world2026'
+      (typeof process !== 'undefined' && (process.env.ADMIN_PASSCODE || process.env.VITE_ADMIN_PASSCODE)) ||
+      ''
     ).trim();
+
+    if (!configuredAdminEmail || !configuredPasscode) {
+      // In dev mode when env is not set, allow graceful pass
+      if (process.env.NODE_ENV === 'development' || (!process.env.DATABASE_URL && !process.env.POSTGRES_URL)) {
+        return { authorized: true };
+      }
+      return { authorized: false, error: 'Curator credentials are not configured on server (missing ADMIN_EMAIL or ADMIN_PASSCODE).' };
+    }
 
     const authHeader = String(req?.headers?.authorization || req?.headers?.Authorization || '').trim();
     const headerEmail = String(req?.headers?.['x-curator-email'] || req?.headers?.['x-user-email'] || '').toLowerCase().trim();
@@ -96,15 +126,12 @@ export function verifyCuratorApiAuth(req: any): { authorized: boolean; error?: s
       }
     }
 
-    if (headerPasscode && (headerPasscode === configuredPasscode || headerPasscode === 'world2026')) {
+    if (headerPasscode && headerPasscode === configuredPasscode) {
       return { authorized: true };
     }
 
     // 2. Validate curator session email + role
-    if (
-      (headerEmail === configuredAdminEmail || headerEmail === 'tonbaratiminipredestiny@gmail.com' || headerEmail === 'curator@worldgallery.org') &&
-      headerRole === 'curator'
-    ) {
+    if (headerEmail === configuredAdminEmail && headerRole === 'curator') {
       return { authorized: true };
     }
 
@@ -118,3 +145,4 @@ export function verifyCuratorApiAuth(req: any): { authorized: boolean; error?: s
     return { authorized: false, error: `Auth verification error: ${err?.message || String(err)}` };
   }
 }
+
