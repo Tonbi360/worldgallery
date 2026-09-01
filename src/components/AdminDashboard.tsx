@@ -31,10 +31,11 @@ import {
   authenticateCurator,
   setCuratorAuthenticated,
   getPendingApplicants,
+  fetchPendingApplicantsFromDb,
   getInviteSeals,
   createInviteSeal,
   deleteInviteSeal,
-  approveApplicant,
+  approveApplicantAsync,
   declineApplicant,
   getCuratorTelemetry,
   getDailyApprovalCount,
@@ -110,8 +111,17 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     }
   }, [onNavigate]);
 
-  const refreshData = () => {
-    setApplicants(getPendingApplicants());
+  const refreshData = async () => {
+    try {
+      const dbApps = await fetchPendingApplicantsFromDb();
+      if (dbApps && dbApps.length >= 0) {
+        setApplicants(dbApps);
+      } else {
+        setApplicants(getPendingApplicants());
+      }
+    } catch {
+      setApplicants(getPendingApplicants());
+    }
     setSeals(getInviteSeals());
     setTelemetry(getCuratorTelemetry());
   };
@@ -147,7 +157,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleApprove = (app: PendingApplicant) => {
+  const handleApprove = async (app: PendingApplicant) => {
     if (telemetry.approvedToday >= 10) {
       haptics.notification('warning');
       showToast('Daily curation quota is complete (10 of 10). Resumes tomorrow.');
@@ -157,18 +167,22 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     haptics.impact('medium');
     setApprovingId(app.id);
 
-    setTimeout(() => {
-      const res = approveApplicant(app.id);
+    try {
+      const res = await approveApplicantAsync(app.id);
       if (res.success) {
         haptics.notification('success');
         showToast(`Welcomed ${app.fullName} to the Gallery (${res.member?.memberNumber}).`);
-        refreshData();
+        await refreshData();
       } else {
         haptics.notification('error');
         showToast(res.error || 'Failed to approve applicant.');
       }
+    } catch {
+      haptics.notification('error');
+      showToast('Failed to approve applicant.');
+    } finally {
       setApprovingId(null);
-    }, 400);
+    }
   };
 
   const handleConfirmDecline = () => {

@@ -162,6 +162,23 @@ export function incrementDailyApprovalCount(): number {
   return next;
 }
 
+export async function approveApplicantAsync(applicantId: string): Promise<{ success: boolean; error?: string; member?: GalleryMember }> {
+  try {
+    const dbRes = await dbApproveApplicant(applicantId);
+    if (dbRes && dbRes.success && dbRes.member) {
+      const applicants = getPendingApplicants().filter((a) => a.id !== applicantId);
+      savePendingApplicants(applicants);
+      const existingMembers = getAllGalleryMembers().filter((m) => m.id !== dbRes.member?.id);
+      saveAllGalleryMembers([dbRes.member, ...existingMembers]);
+      incrementDailyApprovalCount();
+      return dbRes;
+    }
+  } catch (err) {
+    console.warn('[CuratorStore] Database approve request notice:', err);
+  }
+  return approveApplicant(applicantId);
+}
+
 export function approveApplicant(applicantId: string): { success: boolean; error?: string; member?: GalleryMember } {
   const currentApprovals = getDailyApprovalCount();
   if (currentApprovals >= 10) {

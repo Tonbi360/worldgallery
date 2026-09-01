@@ -401,97 +401,131 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
       value: sanitizeText(b.value),
     }));
 
-    // Record client submission
-    recordClientAction('apply');
+    const payload = {
+      fullName: sanitizedFullName,
+      handle: sanitizedHandle,
+      email: (draft.email || '').trim().toLowerCase(),
+      password: draft.password,
+      passcode: draft.password,
+      inviteCode: cleanInviteCode,
+      location: sanitizedLocation,
+      bio: sanitizedBio,
+      tags: sanitizedTags,
+      availability: draft.availability,
+      avatarBg: draft.avatarBg,
+      avatarUrl: draft.avatarUrl,
+      photos: draft.avatarUrl ? [draft.avatarUrl] : [],
+      bridges: sanitizedBridges,
+    };
 
-    // Save submitted applicant & clear saved draft
     try {
-      localStorage.setItem('wg_submitted_applicant_v1', JSON.stringify({
-        ...draft,
-        fullName: sanitizedFullName,
-        handle: sanitizedHandle,
-        location: sanitizedLocation,
-        bio: sanitizedBio,
-        tags: sanitizedTags,
-        bridges: sanitizedBridges,
-      }));
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      const response = await fetch('/api/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => null);
 
-      if (isCodeValid) {
-        // Mark seal as used if found
-        if (matchingSeal) {
-          const updatedSeals = activeSeals.map((s) =>
-            s.id === matchingSeal.id
-              ? { ...s, status: 'used' as const, usedByHandle: sanitizedHandle, usedAt: new Date().toISOString() }
-              : s
-          );
-          saveInviteSeals(updatedSeals);
+      let serverSuccess = false;
+      let returnedStatus = isCodeValid ? 'active' : 'pending';
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          serverSuccess = true;
+          returnedStatus = data.status || (isCodeValid ? 'active' : 'pending');
+
+          if (data.user) {
+            localStorage.setItem('wg_user_session', JSON.stringify(data.user));
+          }
+          if (data.profile) {
+            saveCurrentUserProfile(data.profile);
+          }
+        } else {
+          throw new Error(data.error || 'The registry could not process this application.');
+        }
+      } else if (response && !response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server responded with error status ${response.status}`);
+      } else {
+        // Network / Fetch failed (e.g. offline)
+        if (import.meta.env.DEV) {
+          console.warn('[ApplyWizard DEV] /api/apply unreachable. Proceeding with local dev state.');
+          serverSuccess = true;
+        } else {
+          throw new Error('Unable to contact the registry server. Please check your connection.');
+        }
+      }
+
+      if (serverSuccess) {
+        // Record client submission
+        recordClientAction('apply');
+
+        // Save submitted applicant & clear saved draft
+        localStorage.setItem('wg_submitted_applicant_v1', JSON.stringify({
+          ...draft,
+          fullName: sanitizedFullName,
+          handle: sanitizedHandle,
+          location: sanitizedLocation,
+          bio: sanitizedBio,
+          tags: sanitizedTags,
+          bridges: sanitizedBridges,
+        }));
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+
+        if (import.meta.env.DEV) {
+          if (isCodeValid) {
+            if (matchingSeal) {
+              const updatedSeals = activeSeals.map((s) =>
+                s.id === matchingSeal.id
+                  ? { ...s, status: 'used' as const, usedByHandle: sanitizedHandle, usedAt: new Date().toISOString() }
+                  : s
+              );
+              saveInviteSeals(updatedSeals);
+            }
+          } else {
+            const pendingApplicant: PendingApplicant = {
+              id: `app-${Date.now()}`,
+              fullName: sanitizedFullName,
+              handle: sanitizedHandle,
+              location: sanitizedLocation,
+              bio: sanitizedBio,
+              tags: sanitizedTags,
+              availability: draft.availability,
+              avatarBg: draft.avatarBg,
+              avatarUrl: draft.avatarUrl,
+              photos: draft.avatarUrl ? [draft.avatarUrl] : [],
+              appliedAt: new Date().toISOString(),
+              entryType: isInviteMode ? 'invite' : 'queue',
+              status: 'pending',
+              bridges: sanitizedBridges.map((b) => ({
+                type: b.type,
+                label: CHANNEL_CONFIGS[b.type]?.label || b.customTypeName || b.type,
+                maskedHint: maskContactValue(b.type, b.value),
+                unmaskedValue: b.value,
+                isLink: b.type === 'website',
+              })),
+            };
+            const currentPending = getPendingApplicants();
+            savePendingApplicants([pendingApplicant, ...currentPending]);
+          }
         }
 
-        // Initialize user profile as verified member
-        const newMember: GalleryMember = {
-          id: `mem-${sanitizedHandle}`,
-          fullName: sanitizedFullName,
-          handle: sanitizedHandle,
-          location: sanitizedLocation,
-          bio: sanitizedBio,
-          tags: sanitizedTags,
-          availability: draft.availability,
-          avatarBg: draft.avatarBg,
-          avatarUrl: draft.avatarUrl,
-          photos: draft.avatarUrl ? [draft.avatarUrl] : [],
-          cohort: 'Cohort 2026',
-          bridges: sanitizedBridges.map((b) => ({
-            type: b.type,
-            label: CHANNEL_CONFIGS[b.type]?.label || b.customTypeName || b.type,
-            maskedHint: maskContactValue(b.type, b.value),
-            unmaskedValue: b.value,
-            isLink: b.type === 'website',
-          })),
-        };
-        saveCurrentUserProfile(newMember);
-      } else {
-        // Enqueue into pending applicants for curator desk review
-        const pendingApplicant: PendingApplicant = {
-          id: `app-${Date.now()}`,
-          fullName: sanitizedFullName,
-          handle: sanitizedHandle,
-          location: sanitizedLocation,
-          bio: sanitizedBio,
-          tags: sanitizedTags,
-          availability: draft.availability,
-          avatarBg: draft.avatarBg,
-          avatarUrl: draft.avatarUrl,
-          photos: draft.avatarUrl ? [draft.avatarUrl] : [],
-          appliedAt: new Date().toISOString(),
-          entryType: isInviteMode ? 'invite' : 'queue',
-          status: 'pending',
-          bridges: sanitizedBridges.map((b) => ({
-            type: b.type,
-            label: CHANNEL_CONFIGS[b.type]?.label || b.customTypeName || b.type,
-            maskedHint: maskContactValue(b.type, b.value),
-            unmaskedValue: b.value,
-            isLink: b.type === 'website',
-          })),
-        };
-        const currentPending = getPendingApplicants();
-        savePendingApplicants([pendingApplicant, ...currentPending]);
+        setIsSubmitting(false);
+        setIsSubmitSuccess(true);
+        haptics.notification('success');
+
+        const targetRoute = returnedStatus === 'active' ? '/gallery' : '/waiting';
+
+        setTimeout(() => {
+          onNavigate(targetRoute);
+        }, 400);
       }
-    } catch {
-      // Ignore storage errors
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setSubmitError(err?.message || 'Failed to submit application. Please try again.');
+      haptics.notification('error');
+      return;
     }
-
-    await new Promise((res) => setTimeout(res, 500));
-
-    setIsSubmitting(false);
-    setIsSubmitSuccess(true);
-    haptics.notification('success');
-
-    const targetRoute = isCodeValid ? '/gallery' : '/waiting';
-
-    setTimeout(() => {
-      onNavigate(targetRoute);
-    }, 400);
   };
 
   // Initials for avatar monogram

@@ -36,7 +36,7 @@ export default async function handler(req: any, res: any) {
     // Extract email from bridges or body or fallback to member handle
     const emailBridge = cleanBridges.find((b: any) => b.type === 'email' && b.value);
     const cleanEmail = String(body.email || emailBridge?.value || `${cleanHandle}@member.worldgallery.org`).toLowerCase().trim();
-    const rawPasscode = String(body.passcode || 'world2026').trim();
+    const rawPasscode = String(body.passcode || body.password || 'world2026').trim();
 
     if (!cleanFullName || !cleanHandle) {
       return res.status(400).json({ error: 'Full name and handle are required.' });

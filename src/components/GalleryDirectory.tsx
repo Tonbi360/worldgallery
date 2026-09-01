@@ -14,7 +14,7 @@ import {
 import { haptics } from '../lib/haptics';
 import { GalleryMember } from '../types/gallery';
 import { IncomingRequest } from '../types/activity';
-import { getCurrentUserProfile, getAllGalleryMembers, USER_PROFILE_UPDATE_EVENT } from '../lib/userProfile';
+import { getCurrentUserProfile, getAllGalleryMembers, fetchAllGalleryMembersFromDb, USER_PROFILE_UPDATE_EVENT } from '../lib/userProfile';
 import AvatarMenu from './AvatarMenu';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -49,6 +49,15 @@ export default function GalleryDirectory({
     };
     window.addEventListener(USER_PROFILE_UPDATE_EVENT, handleProfileUpdate);
     return () => window.removeEventListener(USER_PROFILE_UPDATE_EVENT, handleProfileUpdate);
+  }, []);
+
+  // Fetch active directory profiles from server
+  useEffect(() => {
+    fetchAllGalleryMembersFromDb().then((members) => {
+      if (members && members.length > 0) {
+        setMembersList(members);
+      }
+    }).catch(() => {});
   }, []);
 
   // Load incoming requests count

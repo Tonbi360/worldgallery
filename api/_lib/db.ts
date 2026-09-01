@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import * as schema from '../../drizzle/schema';
+import * as schema from './schema';
 
 let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
 let hasAuditedServerless = false;
