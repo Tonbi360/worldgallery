@@ -3,51 +3,60 @@ import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req: any, res: any) {
-  setCorsHeaders(res, req.headers?.origin);
+  try {
+    setCorsHeaders(res, req?.headers?.origin);
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { email, passcode } = req.body || {};
-  const cleanEmail = String(email || '').toLowerCase().trim();
-  const rawPasscode = String(passcode || '');
-
-  if (!cleanEmail || !rawPasscode) {
-    return res.status(400).json({ verified: false, error: 'Email and passcode are required.' });
-  }
-
-  const db = getApiDb();
-  if (!db) {
-    // Fallback verification for sandbox environment without database
-    const adminEmail = (process.env.ADMIN_EMAIL || 'tonbaratiminipredestiny@gmail.com').toLowerCase().trim();
-    const adminPasscode = process.env.ADMIN_PASSCODE || 'world2026';
-
-    const isCurator =
-      (cleanEmail === adminEmail || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
-      (rawPasscode === adminPasscode || rawPasscode === 'world2026');
-
-    if (isCurator) {
-      return res.status(200).json({
-        verified: true,
-        user: {
-          id: 'usr_curator_tonbara',
-          email: cleanEmail,
-          role: 'curator',
-          handle: 'tonbara',
-          name: 'The Curator',
-        },
-      });
+    if (req?.method === 'OPTIONS') {
+      return res.status ? res.status(200).end() : res.end();
     }
 
-    return res.status(401).json({ verified: false, error: 'Database unavailable and credentials do not match curator.' });
-  }
+    if (req?.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-  try {
+    const { email, passcode } = req.body || {};
+    const cleanEmail = String(email || '').toLowerCase().trim();
+    const rawPasscode = String(passcode || '');
+
+    if (!cleanEmail || !rawPasscode) {
+      return res.status(400).json({ verified: false, error: 'Email and passcode are required.' });
+    }
+
+    const configuredAdminEmail = (
+      process.env.ADMIN_EMAIL ||
+      process.env.VITE_ADMIN_EMAIL ||
+      'tonbaratiminipredestiny@gmail.com'
+    ).toLowerCase().trim();
+
+    const configuredAdminPasscode = (
+      process.env.ADMIN_PASSCODE ||
+      process.env.VITE_ADMIN_PASSCODE ||
+      'world2026'
+    ).trim();
+
+    const db = getApiDb();
+    if (!db) {
+      // Fallback verification for sandbox environment without database
+      const isCurator =
+        (cleanEmail === configuredAdminEmail || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
+        (rawPasscode === configuredAdminPasscode || rawPasscode === 'world2026');
+
+      if (isCurator) {
+        return res.status(200).json({
+          verified: true,
+          user: {
+            id: 'usr_curator_tonbara',
+            email: cleanEmail,
+            role: 'curator',
+            handle: 'tonbara',
+            name: 'The Curator',
+          },
+        });
+      }
+
+      return res.status(401).json({ verified: false, error: 'Database unavailable and credentials do not match curator.' });
+    }
+
     const userRows = await db
       .select()
       .from(schema.users)
@@ -68,10 +77,9 @@ export default async function handler(req: any, res: any) {
     }
 
     // Also allow configured admin passcode for curator email
-    const configuredAdminEmail = (process.env.ADMIN_EMAIL || 'tonbaratiminipredestiny@gmail.com').toLowerCase().trim();
     const isCuratorOverride =
       (cleanEmail === configuredAdminEmail || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
-      (rawPasscode === (process.env.ADMIN_PASSCODE || 'world2026') || rawPasscode === 'world2026');
+      (rawPasscode === configuredAdminPasscode || rawPasscode === 'world2026');
 
     if (!passwordValid && !isCuratorOverride) {
       return res.status(401).json({ verified: false, error: 'Incorrect passcode entered.' });

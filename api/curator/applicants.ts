@@ -2,28 +2,28 @@ import { getApiDb, schema, setCorsHeaders, verifyCuratorApiAuth } from '../_lib/
 import { eq, desc } from 'drizzle-orm';
 
 export default async function handler(req: any, res: any) {
-  setCorsHeaders(res, req.headers.origin);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // Server-side curator verification
-  const auth = verifyCuratorApiAuth(req);
-  if (!auth.authorized) {
-    return res.status(401).json({ error: auth.error || 'Unauthorized' });
-  }
-
-  const db = getApiDb();
-  if (!db) {
-    return res.status(503).json({ error: 'Database unavailable' });
-  }
-
   try {
+    setCorsHeaders(res, req?.headers?.origin);
+
+    if (req?.method === 'OPTIONS') {
+      return res.status ? res.status(200).end() : res.end();
+    }
+
+    if (req?.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    // Server-side curator verification
+    const auth = verifyCuratorApiAuth(req);
+    if (!auth.authorized) {
+      return res.status(401).json({ error: auth.error || 'Unauthorized' });
+    }
+
+    const db = getApiDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     const rows = await db
       .select()
       .from(schema.profiles)

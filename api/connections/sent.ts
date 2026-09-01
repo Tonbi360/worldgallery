@@ -2,29 +2,29 @@ import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
 import { eq, desc } from 'drizzle-orm';
 
 export default async function handler(req: any, res: any) {
-  setCorsHeaders(res, req.headers.origin);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const db = getApiDb();
-  if (!db) {
-    return res.status(503).json({ error: 'Database unavailable' });
-  }
-
-  const { requesterId } = req.query || {};
-  const cleanRequesterId = String(requesterId || '').trim();
-
-  if (!cleanRequesterId) {
-    return res.status(400).json({ error: 'requesterId parameter is required' });
-  }
-
   try {
+    setCorsHeaders(res, req?.headers?.origin);
+
+    if (req?.method === 'OPTIONS') {
+      return res.status ? res.status(200).end() : res.end();
+    }
+
+    if (req?.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const db = getApiDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const { requesterId } = req.query || {};
+    const cleanRequesterId = String(requesterId || '').trim();
+
+    if (!cleanRequesterId) {
+      return res.status(400).json({ error: 'requesterId parameter is required' });
+    }
+
     const rows = await db
       .select()
       .from(schema.connection_requests)

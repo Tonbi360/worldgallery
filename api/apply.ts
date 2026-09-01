@@ -3,24 +3,24 @@ import { eq, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req: any, res: any) {
-  setCorsHeaders(res, req.headers?.origin);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const db = getApiDb();
-  if (!db) {
-    return res.status(503).json({
-      error: 'Database is currently unavailable. Please verify DATABASE_URL is set in your deployment.',
-    });
-  }
-
   try {
+    setCorsHeaders(res, req?.headers?.origin);
+
+    if (req?.method === 'OPTIONS') {
+      return res.status ? res.status(200).end() : res.end();
+    }
+
+    if (req?.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const db = getApiDb();
+    if (!db) {
+      return res.status(503).json({
+        error: 'Database is currently unavailable. Please verify DATABASE_URL is set in your deployment.',
+      });
+    }
+
     const body = req.body || {};
     const cleanFullName = String(body.fullName || '').trim();
     const cleanHandle = String(body.handle || '').toLowerCase().replace(/^@/, '').trim();

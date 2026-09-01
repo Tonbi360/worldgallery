@@ -1,33 +1,33 @@
 import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
 
 export default async function handler(req: any, res: any) {
-  setCorsHeaders(res, req.headers.origin);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const db = getApiDb();
-  if (!db) {
-    return res.status(503).json({ error: 'Database unavailable' });
-  }
-
-  const body = req.body || {};
-  const requesterId = String(body.requesterId || '').trim();
-  const receiverId = String(body.receiverId || '').trim();
-  const requestedChannel = String(body.requestedChannel || '').trim();
-  const senderOfferedChannel = body.senderOfferedChannel ? String(body.senderOfferedChannel).trim() : null;
-  const note = String(body.note || '').trim();
-
-  if (!requesterId || !receiverId || !requestedChannel || !note) {
-    return res.status(400).json({ error: 'Missing required connection request fields' });
-  }
-
   try {
+    setCorsHeaders(res, req?.headers?.origin);
+
+    if (req?.method === 'OPTIONS') {
+      return res.status ? res.status(200).end() : res.end();
+    }
+
+    if (req?.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const db = getApiDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
+    const body = req.body || {};
+    const requesterId = String(body.requesterId || '').trim();
+    const receiverId = String(body.receiverId || '').trim();
+    const requestedChannel = String(body.requestedChannel || '').trim();
+    const senderOfferedChannel = body.senderOfferedChannel ? String(body.senderOfferedChannel).trim() : null;
+    const note = String(body.note || '').trim();
+
+    if (!requesterId || !receiverId || !requestedChannel || !note) {
+      return res.status(400).json({ error: 'Missing required connection request fields' });
+    }
+
     const newId = body.id || `req_${Date.now()}`;
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);

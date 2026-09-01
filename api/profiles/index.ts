@@ -2,18 +2,18 @@ import { getApiDb, schema, setCorsHeaders } from '../_lib/db';
 import { eq, desc } from 'drizzle-orm';
 
 export default async function handler(req: any, res: any) {
-  setCorsHeaders(res, req.headers.origin);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const db = getApiDb();
-  if (!db) {
-    return res.status(503).json({ error: 'Database unavailable' });
-  }
-
   try {
+    setCorsHeaders(res, req?.headers?.origin);
+
+    if (req?.method === 'OPTIONS') {
+      return res.status ? res.status(200).end() : res.end();
+    }
+
+    const db = getApiDb();
+    if (!db) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
+
     if (req.method === 'GET') {
       const rows = await db
         .select()
