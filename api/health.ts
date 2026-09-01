@@ -1,4 +1,4 @@
-export const BUILD_STAMP = 'WG-2026-09-02-D';
+export const BUILD_STAMP = 'WG-2026-09-02-E';
 
 export default async function handler(req: any, res: any) {
   try {

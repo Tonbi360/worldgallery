@@ -1,4 +1,59 @@
-import { getApiDb, setCorsHeaders, sendJson, sendError } from '../_lib/db';
+function setCorsHeaders(res: any, origin?: string) {
+  try {
+    if (!res || typeof res.setHeader !== 'function') return;
+
+    const configuredAppUrl = (
+      (typeof process !== 'undefined' && (process.env.APP_URL || process.env.NEXTAUTH_URL)) ||
+      ''
+    ).trim();
+
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://ais-dev-mftvplyoikvax2x35ybbry-346904313667.europe-west2.run.app',
+      'https://ais-pre-mftvplyoikvax2x35ybbry-346904313667.europe-west2.run.app',
+    ];
+
+    if (configuredAppUrl && !allowedOrigins.includes(configuredAppUrl)) {
+      allowedOrigins.push(configuredAppUrl);
+    }
+
+    const isVercelPreview = origin && /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin);
+    const isAllowed = origin && (allowedOrigins.includes(origin) || isVercelPreview);
+    const matchedOrigin = isAllowed ? origin : (configuredAppUrl || origin || '*');
+
+    res.setHeader('Access-Control-Allow-Origin', matchedOrigin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-curator-email, x-curator-role, x-curator-passcode, x-user-email');
+    res.setHeader('Access-Control-Max-Age', '86400');
+  } catch {
+    // Ignore
+  }
+}
+
+function sendJson(res: any, status: number, data: any) {
+  try {
+    setCorsHeaders(res);
+    if (res && typeof res.status === 'function') {
+      return res.status(status).json(data);
+    }
+    if (res && typeof res.setHeader === 'function') {
+      res.setHeader('Content-Type', 'application/json');
+    }
+    if (res) {
+      res.statusCode = status;
+      if (typeof res.end === 'function') {
+        return res.end(JSON.stringify(data));
+      }
+    }
+  } catch {
+    // Fallback
+  }
+}
+
+function sendError(res: any, status: number, message: string) {
+  return sendJson(res, status, { ok: false, error: message });
+}
 
 export default async function handler(req: any, res: any) {
   try {
@@ -12,15 +67,19 @@ export default async function handler(req: any, res: any) {
       return sendError(res, 405, 'Method not allowed');
     }
 
-    let sql: any;
-    try {
-      sql = await getApiDb();
-    } catch (dbErr: any) {
-      return sendError(res, 500, `Database initialization error: ${dbErr?.message || String(dbErr)}`);
-    }
+    const connectionString = (
+      (typeof process !== 'undefined' && (process.env.DATABASE_URL || process.env.POSTGRES_URL)) ||
+      ''
+    ).trim();
 
-    if (!sql) {
-      return sendError(res, 503, 'Database unavailable');
+    let sql: any = null;
+    if (connectionString) {
+      try {
+        const { neon } = await import('@neondatabase/serverless');
+        sql = neon(connectionString);
+      } catch (neonErr: any) {
+        return sendError(res, 500, `Database driver load error: ${neonErr?.message || String(neonErr)}`);
+      }
     }
 
     const { receiverId } = req.query || {};
@@ -28,6 +87,10 @@ export default async function handler(req: any, res: any) {
 
     if (!cleanReceiverId) {
       return sendError(res, 400, 'receiverId parameter is required');
+    }
+
+    if (!sql) {
+      return sendJson(res, 200, { ok: true, success: true, data: [] });
     }
 
     const rows = await sql`
