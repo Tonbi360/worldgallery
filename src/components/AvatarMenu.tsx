@@ -167,16 +167,16 @@ export default function AvatarMenu({
                             .join('')
                             .slice(0, 2)
                             .toUpperCase()
-                        : 'TT'}
+                        : 'ME'}
                     </span>
                   )}
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="font-sans font-semibold text-[14.5px] text-ios-text truncate leading-tight">
-                    {userProfile.fullName || 'Tonbara Timinipre Destiny'}
+                    {userProfile.fullName || 'Member'}
                   </span>
                   <span className="font-sans text-[12.5px] text-ios-secondary truncate">
-                    @{userProfile.handle || 'tonbi360'}
+                    @{userProfile.handle || 'member'}
                   </span>
                 </div>
               </div>

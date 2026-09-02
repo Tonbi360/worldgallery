@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 
-export const ADMIN_EMAIL_FALLBACK = 'tonbaratiminipredestiny@gmail.com';
+export const ADMIN_EMAIL_FALLBACK = '';
 
 export interface UserSession {
   email: string;
@@ -11,16 +11,13 @@ export interface UserSession {
 
 /**
  * Validates and checks if a session has Curator permissions.
- * Gated by NextAuth/session role === 'curator' or email matching ADMIN_EMAIL.
+ * Gated by session role === 'curator' and email matching configured ADMIN_EMAIL.
  */
 export function isCuratorSession(session?: UserSession | null): boolean {
   if (!session) return false;
   const adminEmail = getAdminEmail().toLowerCase().trim();
   const sessionEmail = (session.email || '').toLowerCase().trim();
-  const isAuthorizedEmail =
-    sessionEmail === adminEmail ||
-    sessionEmail === 'tonbaratiminipredestiny@gmail.com' ||
-    sessionEmail === 'curator@worldgallery.org';
+  const isAuthorizedEmail = adminEmail !== '' && sessionEmail === adminEmail;
 
   return session.role === 'curator' && isAuthorizedEmail;
 }
@@ -30,8 +27,8 @@ export function getAdminEmail(): string {
   return (
     (typeof process !== 'undefined' && process.env?.ADMIN_EMAIL) ||
     metaEnv?.VITE_ADMIN_EMAIL ||
-    ADMIN_EMAIL_FALLBACK
-  );
+    ''
+  ).trim();
 }
 
 export function getAppUrl(): string {
@@ -270,8 +267,8 @@ export function auditEnvironmentVariables(): EnvValidationReport {
   if (isBrowser) {
     // Client-side environment audit (VITE_ prefixed only)
     if (!metaEnv?.VITE_ADMIN_EMAIL) {
-      warnings.push(`VITE_ADMIN_EMAIL is not set in browser. Using fallback curator identity (${ADMIN_EMAIL_FALLBACK}).`);
-      console.info(`[World Gallery Audit] Client: VITE_ADMIN_EMAIL not set, using fallback (${ADMIN_EMAIL_FALLBACK}).`);
+      warnings.push('VITE_ADMIN_EMAIL is not set in browser environment.');
+      console.info('[World Gallery Audit] Client: VITE_ADMIN_EMAIL not set.');
     } else {
       console.info(`[World Gallery Audit] Client: Loaded VITE_ADMIN_EMAIL (${metaEnv.VITE_ADMIN_EMAIL}).`);
     }
@@ -292,8 +289,8 @@ export function auditEnvironmentVariables(): EnvValidationReport {
   }
 
   const adminEmail = getAdminEmail();
-  if (adminEmail === ADMIN_EMAIL_FALLBACK && !warnings.some(w => w.includes('fallback'))) {
-    warnings.push(`Using fallback curator identity (${ADMIN_EMAIL_FALLBACK}).`);
+  if (!adminEmail && !warnings.some(w => w.includes('ADMIN_EMAIL'))) {
+    warnings.push('ADMIN_EMAIL is not configured.');
   }
 
   return {

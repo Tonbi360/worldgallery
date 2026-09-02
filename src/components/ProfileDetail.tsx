@@ -95,9 +95,7 @@ export default function ProfileDetail({
     // Self check (matches current user's handle or id)
     if (
       member.handle.toLowerCase() === currentUser.handle.toLowerCase() ||
-      member.id === currentUser.id ||
-      member.handle === 'tonbi360' ||
-      member.handle === 'tonbara'
+      member.id === currentUser.id
     ) {
       setConnectionState('self');
       return;

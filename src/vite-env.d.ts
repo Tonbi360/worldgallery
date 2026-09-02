@@ -5,7 +5,6 @@ interface ImportMetaEnv {
   readonly PROD: boolean;
   readonly MODE: string;
   readonly VITE_ADMIN_EMAIL?: string;
-  readonly VITE_ADMIN_PASSCODE?: string;
 }
 
 interface ImportMeta {

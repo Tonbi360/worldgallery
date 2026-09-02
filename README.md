@@ -103,7 +103,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/world_gallery?sslmode=re
 NEXTAUTH_SECRET="your-super-secret-auth-key-32-chars-minimum"
 RESEND_API_KEY="re_123456789_your_api_key_here"
 ADMIN_EMAIL="curator@worldgallery.org"
-ADMIN_PASSCODE="world2026"
+ADMIN_PASSCODE="your_curator_secret_passcode"
 ```
 
 ### 4. Run Development Server
@@ -141,7 +141,7 @@ The compiled static assets will be output to the `dist/` directory.
 ## 🛡 Curator Access
 
 - **URL**: Navigate to `/admin` or `/curator`.
-- **Passcode**: Configured via `ADMIN_PASSCODE` (default: `world2026`).
+- **Passcode**: Configured via `ADMIN_PASSCODE` in environment variables.
 
 ---
 

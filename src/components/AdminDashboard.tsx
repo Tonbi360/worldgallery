@@ -94,7 +94,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
           const session = JSON.parse(rawSession);
           const configuredAdmin = getAdminEmail().toLowerCase().trim();
           const userEmail = (session?.email || '').toLowerCase().trim();
-          if (session?.role === 'member' && userEmail !== configuredAdmin && userEmail !== 'tonbaratiminipredestiny@gmail.com') {
+          if (session?.role === 'member' && (!configuredAdmin || userEmail !== configuredAdmin)) {
             console.warn('[Security Guard] Non-curator member attempted to access /admin. Redirecting to /gallery.');
             onNavigate('/gallery');
             return;
@@ -315,7 +315,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
                 type="password"
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
-                placeholder="Passcode (e.g. world2026)"
+                placeholder="Enter Curator Passcode"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}

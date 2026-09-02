@@ -47,18 +47,19 @@ export function isCuratorAuthenticated(): boolean {
   return localStorage.getItem(ADMIN_SESSION_KEY) === 'true';
 }
 
-export function setCuratorAuthenticated(value: boolean, email?: string): void {
+export function setCuratorAuthenticated(value: boolean, email?: string, name?: string, handle?: string): void {
   if (typeof window === 'undefined') return;
   if (value) {
     localStorage.setItem(ADMIN_SESSION_KEY, 'true');
     const currentAdminEmail = email || getAdminEmail();
+    const defaultHandle = currentAdminEmail ? currentAdminEmail.split('@')[0].replace(/[^a-z0-9_]/g, '') : 'curator';
     localStorage.setItem(
       USER_SESSION_KEY,
       JSON.stringify({
         email: currentAdminEmail,
         role: 'curator',
-        name: 'Tonbara Timinipre Destiny',
-        handle: 'tonbi360',
+        name: name || 'Curator',
+        handle: handle || defaultHandle || 'curator',
         memberNumber: '#0001',
         member_number: '#0001',
       })
@@ -82,20 +83,18 @@ export function setCuratorAuthenticated(value: boolean, email?: string): void {
 export function authenticateCurator(passwordOrEmail: string): boolean {
   const adminEmail = getAdminEmail().toLowerCase().trim();
   const input = passwordOrEmail.trim();
+  if (!input) return false;
 
-  // Allow email matching or configured admin passcode
-  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
-  const adminSecret =
+  const adminSecret = (
     (typeof process !== 'undefined' && process.env?.ADMIN_PASSCODE) ||
-    metaEnv?.VITE_ADMIN_PASSCODE ||
-    'world2026';
+    ''
+  ).trim();
 
-  if (
-    input.toLowerCase() === adminEmail ||
-    input.toLowerCase() === 'tonbaratiminipredestiny@gmail.com' ||
-    input === adminSecret ||
-    input === 'world2026'
-  ) {
+  if (adminEmail && input.toLowerCase() === adminEmail) {
+    setCuratorAuthenticated(true, adminEmail);
+    return true;
+  }
+  if (adminSecret && input === adminSecret) {
     setCuratorAuthenticated(true, adminEmail);
     return true;
   }

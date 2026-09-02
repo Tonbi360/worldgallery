@@ -139,8 +139,8 @@ export default function EditPortraitScreen({
         localStorage.getItem('wg_curator_session_authenticated') === 'true' ||
         localStorage.getItem('wg_admin_session_authenticated') === 'true';
       return {
-        name: session?.name || (isCurator ? 'Tonbara Timinipre Destiny' : ''),
-        handle: (session?.handle || (isCurator ? 'tonbi360' : '')).replace(/^@/, ''),
+        name: session?.name || (isCurator ? 'Curator' : ''),
+        handle: (session?.handle || (isCurator ? 'curator' : '')).replace(/^@/, ''),
         isCurator,
         memberNumber: session?.member_number || session?.memberNumber || (isCurator ? '#0001' : ''),
       };
@@ -154,8 +154,8 @@ export default function EditPortraitScreen({
       const profile = getCurrentUserProfile();
       const initialized = {
         ...profile,
-        fullName: profile.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Tonbara Timinipre Destiny' : ''),
-        handle: profile.handle || sessionInfo.handle || (sessionInfo.isCurator ? 'tonbi360' : ''),
+        fullName: profile.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Curator' : ''),
+        handle: profile.handle || sessionInfo.handle || (sessionInfo.isCurator ? 'curator' : ''),
         cohort: profile.cohort || (sessionInfo.isCurator ? 'Founder & Curator' : 'Cohort 2026'),
         memberNumber: profile.memberNumber || sessionInfo.memberNumber || (sessionInfo.isCurator ? '#0001' : ''),
       };
@@ -675,7 +675,7 @@ export default function EditPortraitScreen({
                   type="text"
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  placeholder="e.g. Tonbara Destiny"
+                  placeholder="e.g. Eleanor Vance"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-transparent focus:border-ios-forest focus:bg-white text-ios-text font-sans text-[15px] outline-none transition-all"
                 />
               </div>
@@ -1406,7 +1406,7 @@ export default function EditPortraitScreen({
                     />
                   ) : (
                     <span>
-                      {(form.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Tonbara Timinipre Destiny' : 'Founding Curator'))
+                      {(form.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Curator' : 'Member'))
                         .split(' ')
                         .map((n) => n[0])
                         .join('')
@@ -1418,13 +1418,13 @@ export default function EditPortraitScreen({
 
                 <div>
                   <h3 className="font-sans font-extrabold text-[20px] text-white">
-                    {form.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Tonbara Timinipre Destiny' : 'Founding Curator')}
+                    {form.fullName || sessionInfo.name || (sessionInfo.isCurator ? 'Curator' : 'Member')}
                   </h3>
                   <p className="font-mono text-[13px] text-[#34C759]">
-                    @{form.handle || sessionInfo.handle || (sessionInfo.isCurator ? 'tonbi360' : 'curator')}
+                    @{form.handle || sessionInfo.handle || (sessionInfo.isCurator ? 'curator' : 'member')}
                   </p>
                   <p className="font-sans text-[12.5px] text-white/60 mt-0.5">
-                    {form.location || (sessionInfo.isCurator ? 'London & Global' : '')}
+                    {form.location || (sessionInfo.isCurator ? 'Global' : '')}
                   </p>
                 </div>
               </div>

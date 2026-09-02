@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, jsonb, index } from 'drizzle-orm/pg-core';
 
 /**
  * Users Table
@@ -33,7 +33,9 @@ export const profiles = pgTable('profiles', {
   cohort: text('cohort').default('Cohort 2026'),
   status: text('status').default('active').notNull(), // 'active' | 'pending' | 'rejected'
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => [
+  index('profiles_status_idx').on(table.status),
+]);
 
 /**
  * Connection Requests Table
@@ -49,7 +51,10 @@ export const connection_requests = pgTable('connection_requests', {
   status: text('status').default('pending').notNull(), // 'pending' | 'approved' | 'declined' | 'expired'
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   expires_at: timestamp('expires_at', { withTimezone: true }),
-});
+}, (table) => [
+  index('connection_requests_receiver_id_idx').on(table.receiver_id),
+  index('connection_requests_requester_id_idx').on(table.requester_id),
+]);
 
 /**
  * Curator Daily Approvals Table
@@ -75,6 +80,19 @@ export const invite_codes = pgTable('invite_codes', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Sessions Table
+ * Authentication session tracking.
+ */
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  token_hash: text('token_hash').notNull(),
+  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  role: text('role').notNull(),
+  expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -86,3 +104,6 @@ export type NewConnectionRequest = typeof connection_requests.$inferInsert;
 
 export type CuratorDailyApproval = typeof curator_daily_approvals.$inferSelect;
 export type InviteCode = typeof invite_codes.$inferSelect;
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;

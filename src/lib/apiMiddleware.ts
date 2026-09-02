@@ -76,10 +76,10 @@ export function isCuratorRequestAuthorized(session: ApiUserSession | null | unde
   const adminEmail = getAdminEmail().toLowerCase().trim();
   const sessionEmail = session.user.email.toLowerCase().trim();
 
-  const isEmailMatch = sessionEmail === adminEmail || sessionEmail === 'tonbaratiminipredestiny@gmail.com';
+  const isEmailMatch = adminEmail !== '' && sessionEmail === adminEmail;
   const isRoleMatch = session.user.role === 'curator';
 
-  return isRoleMatch || isEmailMatch;
+  return isRoleMatch && isEmailMatch;
 }
 
 /**

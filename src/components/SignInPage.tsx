@@ -151,27 +151,6 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
         return;
       }
 
-      // In DEV environment only: allow fallback for local sandbox testing
-      if (import.meta.env.DEV) {
-        const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as unknown as { env?: Record<string, string> })?.env : undefined;
-        const adminPasscode =
-          (typeof process !== 'undefined' && process.env?.ADMIN_PASSCODE) ||
-          metaEnv?.VITE_ADMIN_PASSCODE ||
-          'world2026';
-        const configuredAdmin = getAdminEmail().toLowerCase().trim();
-
-        if (
-          (cleanEmail === configuredAdmin || cleanEmail === 'curator@worldgallery.org' || cleanEmail === 'tonbaratiminipredestiny@gmail.com') &&
-          (password === adminPasscode || password === 'world2026')
-        ) {
-          const curatorUser = { id: 'usr_curator_tonbara', email: cleanEmail, role: 'curator', name: 'The Curator' };
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(curatorUser));
-          localStorage.setItem('wg_curator_session_authenticated', 'true');
-          handleAuthSuccess('/admin');
-          return;
-        }
-      }
-
       // If no response was received (network failure or serverless timed out)
       if (!response) {
         setLoading(false);

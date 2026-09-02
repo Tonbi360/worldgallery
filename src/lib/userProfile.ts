@@ -76,10 +76,10 @@ export function getCurrentUserProfile(): GalleryMember {
       const sanitized = sanitizeMember({ ...DEFAULT_CURRENT_USER, ...parsed });
 
       if (!sanitized.fullName && (sessionName || isCurator)) {
-        sanitized.fullName = isCurator ? (sessionName || 'Tonbara Timinipre Destiny') : sessionName;
+        sanitized.fullName = sessionName || (isCurator ? 'Curator' : '');
       }
       if (!sanitized.handle && (sessionHandle || isCurator)) {
-        sanitized.handle = isCurator ? (sessionHandle || 'tonbi360') : sessionHandle;
+        sanitized.handle = sessionHandle || (isCurator ? 'curator' : '');
       }
       if (isCurator) {
         sanitized.memberNumber = sanitized.memberNumber || sessionMemberNumber || '#0001';
@@ -100,14 +100,14 @@ export function getCurrentUserProfile(): GalleryMember {
     return sanitizeMember({
       ...DEFAULT_CURRENT_USER,
       id: 'usr_curator',
-      fullName: sessionName || 'Tonbara Timinipre Destiny',
-      handle: sessionHandle || 'tonbi360',
+      fullName: sessionName || 'Curator',
+      handle: sessionHandle || 'curator',
       memberNumber: sessionMemberNumber || '#0001',
       cohort: 'Founder & Curator',
       avatarBg: '#1C1C1E',
-      bio: 'Founder and Curator of World Gallery.',
-      location: 'London & Global',
-      tags: ['founder', 'curator'],
+      bio: 'Curator at World Gallery.',
+      location: 'Global',
+      tags: ['curator'],
     });
   }
 
