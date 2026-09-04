@@ -93,6 +93,22 @@ export const sessions = pgTable('sessions', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * Password Resets Table
+ * Ephemeral single-use seals for password renewal.
+ */
+export const password_resets = pgTable('password_resets', {
+  id: text('id').primaryKey(),
+  token_hash: text('token_hash').notNull(),
+  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
+  used_at: timestamp('used_at', { withTimezone: true }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('password_resets_token_hash_idx').on(table.token_hash),
+  index('password_resets_user_id_idx').on(table.user_id),
+]);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 
@@ -107,3 +123,6 @@ export type InviteCode = typeof invite_codes.$inferSelect;
 
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
+
+export type PasswordReset = typeof password_resets.$inferSelect;
+export type NewPasswordReset = typeof password_resets.$inferInsert;

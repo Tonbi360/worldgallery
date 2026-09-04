@@ -86,6 +86,40 @@ async function migrate() {
     `;
     console.log('✅ Checked/created table: invite_codes');
 
+    // 6. Sessions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        token_hash TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `;
+    console.log('✅ Checked/created table: sessions');
+
+    // 7. Password Resets table
+    await sql`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id TEXT PRIMARY KEY,
+        token_hash TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `;
+    console.log('✅ Checked/created table: password_resets');
+
+    // 8. Indexes
+    await sql`CREATE INDEX IF NOT EXISTS profiles_status_idx ON profiles (status);`;
+    await sql`CREATE INDEX IF NOT EXISTS connection_requests_receiver_id_idx ON connection_requests (receiver_id);`;
+    await sql`CREATE INDEX IF NOT EXISTS connection_requests_requester_id_idx ON connection_requests (requester_id);`;
+    await sql`CREATE INDEX IF NOT EXISTS password_resets_token_hash_idx ON password_resets (token_hash);`;
+    await sql`CREATE INDEX IF NOT EXISTS password_resets_user_id_idx ON password_resets (user_id);`;
+    console.log('✅ Checked/created indexes');
+
     console.log('🎉 Migration finished successfully.');
   } catch (error) {
     console.error('❌ Migration failed:', error);

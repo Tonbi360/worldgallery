@@ -445,14 +445,14 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
         }
       } else if (response && !response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Server responded with error status ${response.status}`);
+        throw new Error(errData.error || "Couldn't submit — try again.");
       } else {
         // Network / Fetch failed (e.g. offline)
         if (import.meta.env.DEV) {
           console.warn('[ApplyWizard DEV] /api/apply unreachable. Proceeding with local dev state.');
           serverSuccess = true;
         } else {
-          throw new Error('Unable to contact the registry server. Please check your connection.');
+          throw new Error("Couldn't submit — try again.");
         }
       }
 
@@ -522,7 +522,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
       }
     } catch (err: any) {
       setIsSubmitting(false);
-      setSubmitError(err?.message || 'Failed to submit application. Please try again.');
+      setSubmitError(err?.message || "Couldn't submit — try again.");
       haptics.notification('error');
       return;
     }

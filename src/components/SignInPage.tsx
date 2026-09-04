@@ -199,11 +199,19 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
     haptics.impact('medium');
     setForgotLoading(true);
 
-    // Simulated network dispatch
-    await new Promise((res) => setTimeout(res, 500));
-    setForgotLoading(false);
-    setForgotSubmitted(true);
-    haptics.notification('success');
+    try {
+      await fetch('/api/auth/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+    } catch (err) {
+      console.error('[Forgot Password Error]', err);
+    } finally {
+      setForgotLoading(false);
+      setForgotSubmitted(true);
+      haptics.notification('success');
+    }
   };
 
   return (

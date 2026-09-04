@@ -1,4 +1,6 @@
-export const BUILD_STAMP = 'WG-2026-09-03-A';
+import crypto from 'crypto';
+
+export const BUILD_STAMP = 'WG-2026-09-04-B';
 
 // ============================================================================
 // 1. INLINED CORS & HTTP RESPONSE UTILITIES (ZERO EXTERNAL RELATIVE IMPORTS)
@@ -328,17 +330,26 @@ async function handleAuthVerify(req: any, res: any) {
       `;
 
       if (existingProfiles.length === 0) {
+        const tagsJson = JSON.stringify(['Architecture', 'Curation', 'Design Systems']);
+        const bridgesJson = JSON.stringify([
+          {
+            type: 'email',
+            label: 'Curator Email',
+            maskedHint: '••••@••••.com',
+            unmaskedValue: configuredAdminEmail,
+          },
+        ]);
         await sql`
           INSERT INTO profiles (
-            id, user_id, full_name, handle, location, bio, tags,
-            availability, avatar_bg, avatar_url, photos, member_number,
-            cohort, status, created_at, updated_at
+            id, user_id, full_name, handle, location, bio,
+            avatar_primary, avatar_secondary, avatar_bg, tags,
+            availability, bridges, member_number, cohort, status, created_at
           ) VALUES (
             ${resolvedCuratorId}, ${resolvedCuratorId}, 'Curator', ${curatorHandle || 'curator'},
             'Global', 'Founding Curator of World Gallery.',
-            ARRAY['Architecture', 'Curation', 'Design Systems']::text[],
-            'available', '#1C1C1E', '', ARRAY[]::text[], '#0001',
-            'Founder & Curator', 'active', NOW(), NOW()
+            NULL, NULL, '#2D6A4F', ${tagsJson}::jsonb,
+            'open', ${bridgesJson}::jsonb, '#0001',
+            'Founder & Curator', 'active', NOW()
           )
           ON CONFLICT (id) DO NOTHING
         `;
@@ -436,6 +447,306 @@ async function handleAuthVerify(req: any, res: any) {
   });
 }
 
+// ============================================================================
+// PASSWORD RESET HANDLERS & RATE LIMITING
+// ============================================================================
+
+// In-memory sliding window rate limiter: 3 requests / hour per IP
+const forgotRateLimits = new Map<string, number[]>();
+
+function checkForgotRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const oneHourAgo = now - 3600 * 1000;
+  const attempts = (forgotRateLimits.get(ip) || []).filter((t) => t > oneHourAgo);
+  if (attempts.length >= 3) {
+    forgotRateLimits.set(ip, attempts);
+    return false;
+  }
+  attempts.push(now);
+  forgotRateLimits.set(ip, attempts);
+  return true;
+}
+
+function getClientIp(req: any): string {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  if (forwarded) {
+    const first = String(forwarded).split(',')[0].trim();
+    if (first) return first;
+  }
+  return String(req.socket?.remoteAddress || req.connection?.remoteAddress || '127.0.0.1');
+}
+
+// ----------------------------------------------------------------------------
+// POST /api/auth/forgot
+// ----------------------------------------------------------------------------
+async function handleAuthForgot(req: any, res: any) {
+  const genericSuccess = {
+    ok: true,
+    success: true,
+    message: 'If an account exists for that email, a reset link is on its way.',
+  };
+
+  const clientIp = getClientIp(req);
+  if (!checkForgotRateLimit(clientIp)) {
+    return sendError(res, 429, 'Too many reset requests. Please wait an hour before trying again.');
+  }
+
+  const body = req.body || {};
+  const rawEmail = String(body.email || '').toLowerCase().trim();
+
+  // Fail closed / no account enumeration
+  if (!rawEmail || !rawEmail.includes('@')) {
+    return sendJson(res, 200, genericSuccess);
+  }
+
+  const { sql, error: dbErr } = await getDb();
+  if (dbErr || !sql) {
+    console.error('[Forgot Password] Database error:', dbErr);
+    return sendJson(res, 200, genericSuccess);
+  }
+
+  try {
+    // 1. Look up user by email
+    const users = await sql`
+      SELECT id, email, role FROM users
+      WHERE LOWER(email) = ${rawEmail}
+      LIMIT 1
+    `;
+
+    // Members only: Curator passcode lives strictly in env — no reset path for it.
+    if (users.length === 0 || users[0].role !== 'member') {
+      return sendJson(res, 200, genericSuccess);
+    }
+
+    const member = users[0];
+
+    // 2. Generate 32-byte random token and store SHA-256 hash in password_resets
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const resetId = `rst_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30-min expiry
+
+    await sql`
+      INSERT INTO password_resets (id, token_hash, user_id, expires_at, used_at, created_at)
+      VALUES (${resetId}, ${tokenHash}, ${member.id}, ${expiresAt}, NULL, NOW())
+    `;
+
+    // 3. Send email via Resend
+    const resendApiKey = (
+      (typeof process !== 'undefined' && process.env.RESEND_API_KEY) ||
+      ''
+    ).trim();
+
+    if (!resendApiKey) {
+      console.warn('[Resend] RESEND_API_KEY is not configured. Reset email suppressed.');
+      return sendJson(res, 200, genericSuccess);
+    }
+
+    const configuredAppUrl = (
+      (typeof process !== 'undefined' && (process.env.APP_URL || process.env.NEXTAUTH_URL)) ||
+      ''
+    ).trim();
+
+    const baseAppUrl = configuredAppUrl
+      ? (configuredAppUrl.startsWith('http') ? configuredAppUrl : `https://${configuredAppUrl}`).replace(/\/+$/, '')
+      : 'https://worldgallery.app';
+
+    const resetUrl = `${baseAppUrl}/reset?token=${token}`;
+
+    try {
+      const emailResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'World Gallery <onboarding@resend.dev>',
+          to: [member.email],
+          subject: 'Your World Gallery reset seal',
+          text: `A password reset seal was requested for your World Gallery membership.\n\nRenew your credentials within 30 minutes:\n${resetUrl}`,
+          html: `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 36px 20px; color: #1C1C1E; line-height: 1.6;">
+  <div style="margin-bottom: 24px;">
+    <h2 style="font-size: 18px; font-weight: 600; color: #1C1C1E; margin: 0 0 10px 0; letter-spacing: -0.02em;">World Gallery</h2>
+    <p style="font-size: 14.5px; color: #3A3A3C; margin: 0; line-height: 1.5;">
+      A password reset seal was requested for your World Gallery membership.
+    </p>
+  </div>
+  <div style="margin: 28px 0;">
+    <a href="${resetUrl}" style="display: inline-block; background-color: #2D6A4F; color: #FFFFFF; font-size: 14.5px; font-weight: 500; text-decoration: none; padding: 12px 24px; border-radius: 9999px;">
+      Renew your seal
+    </a>
+  </div>
+  <div style="border-top: 1px solid #E5E5EA; padding-top: 20px; margin-top: 28px;">
+    <p style="font-size: 12.5px; color: #8E8E93; margin: 0 0 8px 0; line-height: 1.4;">
+      This seal expires in 30 minutes. If you did not request this, no action is needed.
+    </p>
+    <p style="font-size: 12px; color: #8E8E93; margin: 0; word-break: break-all;">
+      Direct link: <a href="${resetUrl}" style="color: #2D6A4F;">${resetUrl}</a>
+    </p>
+  </div>
+</div>
+          `.trim(),
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorText = await emailResponse.text().catch(() => '');
+        console.error('[Resend Error]', emailResponse.status, errorText);
+      }
+    } catch (sendErr: any) {
+      console.error('[Resend Network Error]', sendErr?.message || String(sendErr));
+    }
+
+    return sendJson(res, 200, genericSuccess);
+  } catch (err: any) {
+    console.error('[Forgot Password Fatal]', err);
+    return sendJson(res, 200, genericSuccess);
+  }
+}
+
+// ----------------------------------------------------------------------------
+// POST /api/auth/reset
+// ----------------------------------------------------------------------------
+async function handleAuthReset(req: any, res: any) {
+  const body = req.body || {};
+  const token = String(body.token || '').trim();
+  const newPassword = String(body.password || body.newPassword || '').trim();
+
+  if (!token) {
+    return sendError(res, 400, 'Reset token is required.');
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return sendError(res, 400, 'Password must be at least 6 characters.');
+  }
+
+  const { sql, error: dbErr } = await getDb();
+  if (dbErr || !sql) {
+    console.error('[Reset Password] Database unavailable:', dbErr);
+    return sendError(res, 503, "Couldn't submit — try again.");
+  }
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // 1. Look up token in password_resets
+    const resetRows = await sql`
+      SELECT id, user_id, expires_at, used_at
+      FROM password_resets
+      WHERE token_hash = ${tokenHash}
+      LIMIT 1
+    `;
+
+    if (resetRows.length === 0) {
+      return sendError(res, 400, 'Invalid reset seal.');
+    }
+
+    const resetRecord = resetRows[0];
+
+    // Single-use check
+    if (resetRecord.used_at) {
+      return sendError(res, 400, 'This reset seal has already been used.');
+    }
+
+    // 30-min expiry check
+    if (new Date(resetRecord.expires_at).getTime() < Date.now()) {
+      return sendError(res, 400, 'This reset seal has expired. Please request a new one.');
+    }
+
+    // Members only check
+    const userRows = await sql`
+      SELECT id, role FROM users
+      WHERE id = ${resetRecord.user_id}
+      LIMIT 1
+    `;
+
+    if (userRows.length === 0 || userRows[0].role !== 'member') {
+      return sendError(res, 400, 'Invalid reset seal.');
+    }
+
+    // 2. Set new bcrypt hash
+    const { bcrypt, error: bcryptErr } = await getBcrypt();
+    if (!bcrypt) {
+      console.error('[Reset Password] Bcrypt unavailable:', bcryptErr);
+      return sendError(res, 500, "Couldn't submit — try again.");
+    }
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    await sql`
+      UPDATE users
+      SET password_hash = ${newHash}
+      WHERE id = ${resetRecord.user_id}
+    `;
+
+    // 3. Mark token used
+    await sql`
+      UPDATE password_resets
+      SET used_at = NOW()
+      WHERE id = ${resetRecord.id}
+    `;
+
+    // 4. Delete ALL sessions for that user
+    await sql`
+      DELETE FROM sessions
+      WHERE user_id = ${resetRecord.user_id}
+    `;
+
+    return sendJson(res, 200, {
+      ok: true,
+      success: true,
+      message: 'Your seal is renewed. Sign in.',
+    });
+  } catch (err: any) {
+    console.error('[Reset Password Fatal]', err);
+    return sendError(res, 500, "Couldn't submit — try again.");
+  }
+}
+
+// ----------------------------------------------------------------------------
+// GET /api/auth/reset?token=... (Token validity check)
+// ----------------------------------------------------------------------------
+async function handleAuthCheckResetToken(req: any, res: any, query: Record<string, string>) {
+  const token = String(query.token || '').trim();
+  if (!token) {
+    return sendError(res, 400, 'Token is required');
+  }
+
+  const { sql, error: dbErr } = await getDb();
+  if (dbErr || !sql) {
+    return sendError(res, 503, "Database unavailable");
+  }
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const resetRows = await sql`
+      SELECT id, expires_at, used_at
+      FROM password_resets
+      WHERE token_hash = ${tokenHash}
+      LIMIT 1
+    `;
+
+    if (resetRows.length === 0) {
+      return sendJson(res, 200, { ok: false, valid: false, reason: 'not_found' });
+    }
+
+    const r = resetRows[0];
+    if (r.used_at) {
+      return sendJson(res, 200, { ok: false, valid: false, reason: 'used' });
+    }
+
+    if (new Date(r.expires_at).getTime() < Date.now()) {
+      return sendJson(res, 200, { ok: false, valid: false, reason: 'expired' });
+    }
+
+    return sendJson(res, 200, { ok: true, valid: true });
+  } catch (err: any) {
+    console.error('[Check Token Fatal]', err);
+    return sendError(res, 500, "Couldn't submit — try again.");
+  }
+}
+
 // ----------------------------------------------------------------------------
 // GET /api/apply?selftest=1
 // ----------------------------------------------------------------------------
@@ -475,139 +786,147 @@ async function handleApplySelftest(req: any, res: any) {
 // POST /api/apply
 // ----------------------------------------------------------------------------
 async function handleApply(req: any, res: any) {
-  const body = req.body || {};
-  const fullName = String(body.fullName || '').trim();
-  const rawHandle = String(body.handle || '').trim().replace(/^@/, '').toLowerCase();
-  const rawEmail = String(body.email || '').trim().toLowerCase();
-  const passcode = String(body.passcode || '').trim();
-  const location = String(body.location || '').trim();
-  const bio = String(body.bio || '').trim();
-  const tags = Array.isArray(body.tags) ? body.tags : [];
-  const availability = String(body.availability || 'available').trim();
-  const avatarBg = String(body.avatarBg || '#1C1C1E').trim();
-  const avatarUrl = String(body.avatarUrl || '').trim();
-  const photos = Array.isArray(body.photos) ? body.photos : (avatarUrl ? [avatarUrl] : []);
-  const bridges = Array.isArray(body.bridges) ? body.bridges : [];
-  const inviteCode = body.inviteCode ? String(body.inviteCode).trim().toUpperCase() : '';
+  try {
+    const body = req.body || {};
+    const fullName = String(body.fullName || '').trim();
+    const rawHandle = String(body.handle || '').trim().replace(/^@/, '').toLowerCase();
+    const rawEmail = String(body.email || '').trim().toLowerCase();
+    const passcode = String(body.passcode || '').trim();
+    const location = String(body.location || '').trim();
+    const bio = String(body.bio || '').trim();
+    const tags = Array.isArray(body.tags) ? body.tags : [];
+    const availability = String(body.availability || 'open').trim();
+    const avatarBg = String(body.avatarBg || '#2D6A4F').trim();
+    const avatarPrimary = String(body.avatarPrimary || body.avatarUrl || (Array.isArray(body.photos) ? body.photos[0] : '') || '').trim() || null;
+    const avatarSecondary = String(body.avatarSecondary || (Array.isArray(body.photos) && body.photos[1] ? body.photos[1] : '') || '').trim() || null;
+    const bridges = Array.isArray(body.bridges) ? body.bridges : [];
+    const inviteCode = body.inviteCode ? String(body.inviteCode).trim().toUpperCase() : '';
 
-  if (!fullName || !rawHandle || !rawEmail || !passcode) {
-    return sendError(res, 400, 'Missing required fields: fullName, handle, email, passcode');
-  }
+    if (!fullName || !rawHandle || !rawEmail || !passcode) {
+      return sendError(res, 400, 'Missing required fields: fullName, handle, email, passcode');
+    }
 
-  const { sql, error: dbErr } = await getDb();
-  if (dbErr) {
-    return sendError(res, 500, `Database initialization failure: ${dbErr}`);
-  }
+    const { sql, error: dbErr } = await getDb();
+    if (dbErr || !sql) {
+      console.error('[Apply DB Error]', dbErr);
+      return sendError(res, 500, "Couldn't submit — try again.");
+    }
 
-  // If mock/no database
-  if (!sql) {
-    const isSeal = !!inviteCode;
-    const serial = isSeal ? '#0002' : null;
+    // 1. Check handle uniqueness
+    const existingHandle = await sql`
+      SELECT id FROM profiles WHERE LOWER(handle) = ${rawHandle} LIMIT 1
+    `;
+    if (existingHandle.length > 0) {
+      return sendError(res, 409, `The handle @${rawHandle} is already reserved.`);
+    }
+
+    // 2. Check email uniqueness
+    const existingEmail = await sql`
+      SELECT id FROM users WHERE LOWER(email) = ${rawEmail} LIMIT 1
+    `;
+    if (existingEmail.length > 0) {
+      return sendError(res, 409, `An account with email ${rawEmail} is already registered.`);
+    }
+
+    // 3. Check invite seal if provided
+    let isInstantApproval = false;
+    let matchedSealId: string | null = null;
+
+    if (inviteCode) {
+      const sealRows = await sql`
+        SELECT id, code, used_by FROM invite_codes
+        WHERE UPPER(code) = ${inviteCode} AND used_by IS NULL
+        LIMIT 1
+      `;
+      if (sealRows.length > 0) {
+        isInstantApproval = true;
+        matchedSealId = sealRows[0].id;
+      }
+    }
+
+    // 4. Calculate member serial if instant approval
+    let assignedMemberNumber: string | null = null;
+    if (isInstantApproval) {
+      const countRows = await sql`
+        SELECT COUNT(*)::int as count FROM profiles WHERE status = 'active'
+      `;
+      const activeCount = countRows[0]?.count || 1;
+      assignedMemberNumber = `#${String(activeCount + 1).padStart(4, '0')}`;
+    }
+
+    // 5. Hash passcode
+    const { bcrypt, error: bcryptErr } = await getBcrypt();
+    if (!bcrypt) {
+      console.error('[Apply Bcrypt Error]', bcryptErr);
+      return sendError(res, 500, "Couldn't submit — try again.");
+    }
+    const passwordHash = await bcrypt.hash(passcode, 10);
+
+    // 6. Create User & Profile
+    const userId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const finalStatus = isInstantApproval ? 'active' : 'pending';
+    const cohort = isInstantApproval ? 'Cohort 2026' : 'Applicant';
+
+    await sql`
+      INSERT INTO users (id, email, password_hash, role, created_at)
+      VALUES (${userId}, ${rawEmail}, ${passwordHash}, 'member', NOW())
+    `;
+
+    const profileRows = await sql`
+      INSERT INTO profiles (
+        id, user_id, full_name, handle, location, bio,
+        avatar_primary, avatar_secondary, avatar_bg, tags,
+        availability, bridges, member_number, cohort, status, created_at
+      ) VALUES (
+        ${userId}, ${userId}, ${fullName}, ${rawHandle}, ${location}, ${bio},
+        ${avatarPrimary}, ${avatarSecondary}, ${avatarBg},
+        ${JSON.stringify(tags)}::jsonb, ${availability}, ${JSON.stringify(bridges)}::jsonb,
+        ${assignedMemberNumber}, ${cohort}, ${finalStatus}, NOW()
+      )
+      RETURNING *
+    `;
+
+    // 7. Consume seal if used
+    if (matchedSealId) {
+      await sql`
+        UPDATE invite_codes
+        SET used_by = ${userId}, used_at = NOW()
+        WHERE id = ${matchedSealId}
+      `;
+    }
+
+    const p = profileRows[0];
+    const profileObj = {
+      id: p.id,
+      fullName: p.full_name,
+      handle: p.handle,
+      location: p.location,
+      bio: p.bio,
+      tags: p.tags || [],
+      availability: p.availability,
+      avatarBg: p.avatar_bg,
+      avatarPrimary: p.avatar_primary,
+      avatarSecondary: p.avatar_secondary,
+      avatarUrl: p.avatar_primary || '',
+      photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean) as string[],
+      memberNumber: p.member_number,
+      cohort: p.cohort,
+      bridges: p.bridges || [],
+      status: p.status,
+    };
+
     return sendJson(res, 200, {
       ok: true,
       success: true,
-      status: isSeal ? 'active' : 'pending',
-      memberNumber: serial,
-      profile: {
-        id: `mock_${rawHandle}`,
-        handle: rawHandle,
-        fullName,
-        memberNumber: serial,
-        status: isSeal ? 'active' : 'pending',
-      },
+      status: finalStatus,
+      memberNumber: assignedMemberNumber,
+      user: { id: userId, email: rawEmail, role: 'member', name: fullName },
+      profile: profileObj,
     });
+  } catch (err: any) {
+    console.error('[Apply Catch Error]', err?.message || String(err));
+    return sendError(res, 500, "Couldn't submit — try again.");
   }
-
-  // 1. Check handle uniqueness
-  const existingHandle = await sql`
-    SELECT id FROM profiles WHERE LOWER(handle) = ${rawHandle} LIMIT 1
-  `;
-  if (existingHandle.length > 0) {
-    return sendError(res, 409, `The handle @${rawHandle} is already reserved.`);
-  }
-
-  // 2. Check email uniqueness
-  const existingEmail = await sql`
-    SELECT id FROM users WHERE LOWER(email) = ${rawEmail} LIMIT 1
-  `;
-  if (existingEmail.length > 0) {
-    return sendError(res, 409, `An account with email ${rawEmail} is already registered.`);
-  }
-
-  // 3. Check invite seal if provided
-  let isInstantApproval = false;
-  let matchedSealId: string | null = null;
-
-  if (inviteCode) {
-    const sealRows = await sql`
-      SELECT id, code, used_by FROM invite_codes
-      WHERE UPPER(code) = ${inviteCode} AND used_by IS NULL
-      LIMIT 1
-    `;
-    if (sealRows.length > 0) {
-      isInstantApproval = true;
-      matchedSealId = sealRows[0].id;
-    }
-  }
-
-  // 4. Calculate member serial if instant approval
-  let assignedMemberNumber: string | null = null;
-  if (isInstantApproval) {
-    const countRows = await sql`
-      SELECT COUNT(*)::int as count FROM profiles WHERE status = 'active'
-    `;
-    const activeCount = countRows[0]?.count || 1;
-    assignedMemberNumber = `#${String(activeCount + 1).padStart(4, '0')}`;
-  }
-
-  // 5. Hash passcode
-  const { bcrypt, error: bcryptErr } = await getBcrypt();
-  if (!bcrypt) {
-    return sendError(res, 500, `Bcrypt error: ${bcryptErr}`);
-  }
-  const passwordHash = await bcrypt.hash(passcode, 10);
-
-  // 6. Create User & Profile
-  const userId = `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const finalStatus = isInstantApproval ? 'active' : 'pending';
-  const cohort = isInstantApproval ? 'Cohort 2026' : 'Applicant';
-
-  await sql`
-    INSERT INTO users (id, email, password_hash, role, created_at)
-    VALUES (${userId}, ${rawEmail}, ${passwordHash}, 'member', NOW())
-  `;
-
-  const profileRows = await sql`
-    INSERT INTO profiles (
-      id, user_id, full_name, handle, location, bio, tags,
-      availability, avatar_bg, avatar_url, photos, member_number,
-      cohort, status, bridges, created_at, updated_at
-    ) VALUES (
-      ${userId}, ${userId}, ${fullName}, ${rawHandle}, ${location}, ${bio},
-      ${tags}::text[], ${availability}, ${avatarBg}, ${avatarUrl},
-      ${photos}::text[], ${assignedMemberNumber}, ${cohort}, ${finalStatus},
-      ${JSON.stringify(bridges)}::jsonb, NOW(), NOW()
-    )
-    RETURNING *
-  `;
-
-  // 7. Consume seal if used
-  if (matchedSealId) {
-    await sql`
-      UPDATE invite_codes
-      SET used_by = ${userId}, used_at = NOW()
-      WHERE id = ${matchedSealId}
-    `;
-  }
-
-  return sendJson(res, 200, {
-    ok: true,
-    success: true,
-    status: finalStatus,
-    memberNumber: assignedMemberNumber,
-    user: { id: userId, email: rawEmail, role: 'member', name: fullName },
-    profile: profileRows[0],
-  });
 }
 
 // ----------------------------------------------------------------------------
@@ -615,16 +934,14 @@ async function handleApply(req: any, res: any) {
 // ----------------------------------------------------------------------------
 async function handleProfiles(req: any, res: any, slug: string[]) {
   const { sql, error: dbErr } = await getDb();
-  if (dbErr) {
-    return sendError(res, 500, `Database error: ${dbErr}`);
+  if (dbErr || !sql) {
+    console.error('[Profiles DB Error]', dbErr);
+    return sendError(res, 500, "Couldn't submit — try again.");
   }
 
   // Specific profile: GET /api/profiles/:handle
   if (slug.length >= 2 && req.method === 'GET') {
     const rawHandle = slug[1].replace(/^@/, '').toLowerCase();
-    if (!sql) {
-      return sendJson(res, 200, { ok: true, success: true, data: null });
-    }
 
     const rows = await sql`
       SELECT * FROM profiles
@@ -649,8 +966,10 @@ async function handleProfiles(req: any, res: any, slug: string[]) {
         tags: p.tags || [],
         availability: p.availability,
         avatarBg: p.avatar_bg,
-        avatarUrl: p.avatar_url,
-        photos: p.photos || [],
+        avatarPrimary: p.avatar_primary,
+        avatarSecondary: p.avatar_secondary,
+        avatarUrl: p.avatar_primary || '',
+        photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean) as string[],
         memberNumber: p.member_number,
         cohort: p.cohort,
         bridges: p.bridges || [],
@@ -660,10 +979,6 @@ async function handleProfiles(req: any, res: any, slug: string[]) {
 
   // GET /api/profiles (List all active members)
   if (req.method === 'GET') {
-    if (!sql) {
-      return sendJson(res, 200, { ok: true, success: true, data: [] });
-    }
-
     const rows = await sql`
       SELECT * FROM profiles
       WHERE status = 'active'
@@ -679,8 +994,10 @@ async function handleProfiles(req: any, res: any, slug: string[]) {
       tags: p.tags || [],
       availability: p.availability,
       avatarBg: p.avatar_bg,
-      avatarUrl: p.avatar_url,
-      photos: p.photos || [],
+      avatarPrimary: p.avatar_primary,
+      avatarSecondary: p.avatar_secondary,
+      avatarUrl: p.avatar_primary || '',
+      photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean) as string[],
       memberNumber: p.member_number,
       cohort: p.cohort,
       bridges: p.bridges || [],
@@ -696,40 +1013,57 @@ async function handleProfiles(req: any, res: any, slug: string[]) {
       return sendError(res, 400, 'Handle and full name are required');
     }
 
-    if (!sql) {
-      return sendJson(res, 200, { ok: true, success: true, profile: p });
-    }
-
     const rawHandle = String(p.handle).replace(/^@/, '').toLowerCase();
     const id = p.id || `mem_${rawHandle}`;
+    const avatarPrimary = String(p.avatarPrimary || p.avatarUrl || (Array.isArray(p.photos) ? p.photos[0] : '') || '').trim() || null;
+    const avatarSecondary = String(p.avatarSecondary || (Array.isArray(p.photos) && p.photos[1] ? p.photos[1] : '') || '').trim() || null;
 
     const upserted = await sql`
       INSERT INTO profiles (
-        id, user_id, full_name, handle, location, bio, tags,
-        availability, avatar_bg, avatar_url, photos, member_number,
-        cohort, status, bridges, created_at, updated_at
+        id, user_id, full_name, handle, location, bio,
+        avatar_primary, avatar_secondary, avatar_bg, tags,
+        availability, bridges, member_number, cohort, status, created_at
       ) VALUES (
         ${id}, ${id}, ${p.fullName}, ${rawHandle}, ${p.location || ''}, ${p.bio || ''},
-        ${p.tags || []}::text[], ${p.availability || 'available'}, ${p.avatarBg || '#1C1C1E'},
-        ${p.avatarUrl || ''}, ${p.photos || []}::text[], ${p.memberNumber || null},
-        ${p.cohort || 'Cohort 2026'}, ${p.status || 'active'}, ${JSON.stringify(p.bridges || [])}::jsonb,
-        NOW(), NOW()
+        ${avatarPrimary}, ${avatarSecondary}, ${p.avatarBg || '#2D6A4F'},
+        ${JSON.stringify(p.tags || [])}::jsonb, ${p.availability || 'open'},
+        ${JSON.stringify(p.bridges || [])}::jsonb,
+        ${p.memberNumber || null}, ${p.cohort || 'Cohort 2026'}, ${p.status || 'active'}, NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         full_name = EXCLUDED.full_name,
         location = EXCLUDED.location,
         bio = EXCLUDED.bio,
+        avatar_primary = EXCLUDED.avatar_primary,
+        avatar_secondary = EXCLUDED.avatar_secondary,
+        avatar_bg = EXCLUDED.avatar_bg,
         tags = EXCLUDED.tags,
         availability = EXCLUDED.availability,
-        avatar_bg = EXCLUDED.avatar_bg,
-        avatar_url = EXCLUDED.avatar_url,
-        photos = EXCLUDED.photos,
-        bridges = EXCLUDED.bridges,
-        updated_at = NOW()
+        bridges = EXCLUDED.bridges
       RETURNING *
     `;
 
-    return sendJson(res, 200, { ok: true, success: true, profile: upserted[0] });
+    const up = upserted[0];
+    const profileObj = {
+      id: up.id,
+      fullName: up.full_name,
+      handle: up.handle,
+      location: up.location,
+      bio: up.bio,
+      tags: up.tags || [],
+      availability: up.availability,
+      avatarBg: up.avatar_bg,
+      avatarPrimary: up.avatar_primary,
+      avatarSecondary: up.avatar_secondary,
+      avatarUrl: up.avatar_primary || '',
+      photos: [up.avatar_primary, up.avatar_secondary].filter(Boolean) as string[],
+      memberNumber: up.member_number,
+      cohort: up.cohort,
+      bridges: up.bridges || [],
+      status: up.status,
+    };
+
+    return sendJson(res, 200, { ok: true, success: true, profile: profileObj });
   }
 
   return sendError(res, 405, 'Method not allowed');
@@ -771,8 +1105,10 @@ async function handleCurator(req: any, res: any, slug: string[]) {
       tags: p.tags || [],
       availability: p.availability,
       avatarBg: p.avatar_bg,
-      avatarUrl: p.avatar_url,
-      photos: p.photos || [],
+      avatarPrimary: p.avatar_primary,
+      avatarSecondary: p.avatar_secondary,
+      avatarUrl: p.avatar_primary || '',
+      photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean) as string[],
       submittedAt: p.created_at,
       status: 'pending',
       bridges: p.bridges || [],
@@ -814,7 +1150,7 @@ async function handleCurator(req: any, res: any, slug: string[]) {
 
     const updated = await sql`
       UPDATE profiles
-      SET status = 'active', member_number = ${nextSerial}, cohort = 'Cohort 2026', updated_at = NOW()
+      SET status = 'active', member_number = ${nextSerial}, cohort = 'Cohort 2026'
       WHERE id = ${applicantId}
       RETURNING *
     `;
@@ -840,8 +1176,10 @@ async function handleCurator(req: any, res: any, slug: string[]) {
       tags: p.tags || [],
       availability: p.availability,
       avatarBg: p.avatar_bg,
-      avatarUrl: p.avatar_url,
-      photos: p.photos || [],
+      avatarPrimary: p.avatar_primary,
+      avatarSecondary: p.avatar_secondary,
+      avatarUrl: p.avatar_primary || '',
+      photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean) as string[],
       memberNumber: p.member_number,
       cohort: p.cohort,
       bridges: p.bridges || [],
@@ -863,7 +1201,7 @@ async function handleCurator(req: any, res: any, slug: string[]) {
 
     await sql`
       UPDATE profiles
-      SET status = 'rejected', updated_at = NOW()
+      SET status = 'rejected'
       WHERE id = ${applicantId}
     `;
 
@@ -897,8 +1235,8 @@ async function handleCurator(req: any, res: any, slug: string[]) {
       }
 
       const rows = await sql`
-        INSERT INTO invite_codes (id, code, description, created_by, max_uses, created_at)
-        VALUES (${sealId}, ${sealCode}, ${sealDesc}, 'curator', 1, NOW())
+        INSERT INTO invite_codes (id, code, description, created_by, created_at)
+        VALUES (${sealId}, ${sealCode}, ${sealDesc}, 'curator', NOW())
         RETURNING *
       `;
 
@@ -1081,6 +1419,21 @@ export default async function handler(req: any, res: any) {
           return await handleAuthVerify(req, res);
         }
       }
+      if (sub === 'forgot') {
+        if (method === 'POST') {
+          return await handleAuthForgot(req, res);
+        }
+        return sendError(res, 405, 'Method not allowed on /api/auth/forgot');
+      }
+      if (sub === 'reset') {
+        if (method === 'POST') {
+          return await handleAuthReset(req, res);
+        }
+        if (method === 'GET') {
+          return await handleAuthCheckResetToken(req, res, query);
+        }
+        return sendError(res, 405, 'Method not allowed on /api/auth/reset');
+      }
       return sendError(res, 404, 'Unknown auth endpoint');
     }
 
@@ -1112,11 +1465,10 @@ export default async function handler(req: any, res: any) {
 
     return sendError(res, 404, `Endpoint /api/${slug.join('/')} not found`);
   } catch (fatalErr: any) {
-    const message = fatalErr?.message || String(fatalErr);
-    const stackLine = (fatalErr?.stack || '').split('\n')[1]?.trim() || '';
+    console.error('[API Fatal Error]', fatalErr);
     return sendJson(res, 500, {
       ok: false,
-      error: stackLine ? `${message} | at ${stackLine}` : message,
+      error: "Couldn't submit — try again.",
       build: BUILD_STAMP,
     });
   }

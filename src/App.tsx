@@ -18,6 +18,7 @@ const SentScreen = lazy(() => import('./components/SentScreen'));
 const PlaceholderRoom = lazy(() => import('./components/PlaceholderRoom'));
 const EditPortraitScreen = lazy(() => import('./components/EditPortraitScreen'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage'));
 
 function RouteLoadingFallback() {
   return (
@@ -78,6 +79,14 @@ export default function App() {
     const cleanPath = currentPath.split('?')[0];
 
     switch (cleanPath) {
+      case '/reset':
+        return (
+          <ResetPasswordPage
+            onNavigate={handleNavigate}
+            onBack={() => handleNavigate('/apply/signin')}
+          />
+        );
+
       case '/apply/signin':
       case '/signin':
         return (
