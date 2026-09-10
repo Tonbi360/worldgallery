@@ -250,9 +250,6 @@ export default function ResetPasswordPage({ onNavigate, onBack }: ResetPasswordP
 
       {/* Subtle Footer */}
       <div className="flex justify-center pb-2 safe-area-bottom">
-        <span className="font-mono text-[10px] text-ios-secondary/40 select-none tracking-wider">
-          WG-2026-09-04-B
-        </span>
       </div>
     </main>
   );

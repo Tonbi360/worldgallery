@@ -15,6 +15,7 @@ import { haptics } from '../lib/haptics';
 import { GalleryMember } from '../types/gallery';
 import { IncomingRequest } from '../types/activity';
 import { getCurrentUserProfile, getAllGalleryMembers, fetchAllGalleryMembersFromDb, USER_PROFILE_UPDATE_EVENT } from '../lib/userProfile';
+import { dbLogout } from '../lib/dataService';
 import AvatarMenu from './AvatarMenu';
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -37,7 +38,7 @@ export default function GalleryDirectory({
   );
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [isAvatarMenuOpen, setIsAvatarMenuOpen] = useState(false);
-  const [pendingRequestsCount, setPendingRequestsCount] = useState(1);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<GalleryMember>(getCurrentUserProfile());
   const [membersList, setMembersList] = useState<GalleryMember[]>(getAllGalleryMembers());
 
@@ -291,7 +292,10 @@ export default function GalleryDirectory({
             onClose={() => setIsAvatarMenuOpen(false)}
             pendingRequestsCount={pendingRequestsCount}
             onNavigate={onNavigate}
-            onSignOut={() => onNavigate('/')}
+            onSignOut={async () => {
+              await dbLogout();
+              onNavigate('/');
+            }}
           />
         </div>
       </header>

@@ -14,7 +14,11 @@ import BridgeActionRow from './BridgeActionRow';
 import {
   IncomingRequest,
 } from '../types/activity';
-import { dbGetIncomingRequestsForReceiver } from '../lib/dataService';
+import {
+  dbGetIncomingRequestsForReceiver,
+  dbApproveConnectionRequest,
+  dbDeclineConnectionRequest,
+} from '../lib/dataService';
 import { getCurrentUserProfile } from '../lib/userProfile';
 
 interface RequestsScreenProps {
@@ -85,12 +89,18 @@ export default function RequestsScreen({
       return req;
     });
     saveRequests(updated);
+    dbApproveConnectionRequest(id).catch((err) => {
+      console.warn('[RequestsScreen] Server approve notice:', err);
+    });
   };
 
   const handleDecline = (id: string) => {
     haptics.impact('light');
     const updated = requests.filter((req) => req.id !== id);
     saveRequests(updated);
+    dbDeclineConnectionRequest(id).catch((err) => {
+      console.warn('[RequestsScreen] Server decline notice:', err);
+    });
   };
 
   const pendingList = requests.filter((r) => r.status === 'pending');

@@ -21,7 +21,7 @@ import {
   CURATED_PALETTE,
 } from '../types/apply';
 import { getPendingApplicants } from '../lib/curatorStore';
-import { getAllGalleryMembers } from '../lib/userProfile';
+import { getAllGalleryMembers, getCurrentUserProfile } from '../lib/userProfile';
 
 const DRAFT_STORAGE_KEY = 'wg_apply_draft_v1';
 const SUBMITTED_STORAGE_KEY = 'wg_submitted_applicant_v1';
@@ -38,10 +38,11 @@ const QUIET_LINES = [
 interface WaitingRoomProps {
   onNavigate: (path: string) => void;
   onBack: () => void;
+  initialState?: WaitingState;
 }
 
-export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
-  // 1. Initial State resolution based on mock email or stored applicant
+export default function WaitingRoom({ onNavigate, onBack, initialState }: WaitingRoomProps) {
+  // 1. Initial State resolution based on stored applicant or current session
   const [applicant, setApplicant] = useState<ApplyDraft>(() => {
     try {
       const stored = localStorage.getItem(SUBMITTED_STORAGE_KEY) || localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -52,20 +53,38 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
     } catch {
       // ignore
     }
+
+    const currentUser = getCurrentUserProfile();
+    if (currentUser && currentUser.handle && currentUser.handle !== 'member') {
+      return {
+        ...INITIAL_APPLY_DRAFT,
+        fullName: currentUser.fullName || '',
+        handle: currentUser.handle || '',
+        email: '',
+        location: currentUser.location || '',
+        bio: currentUser.bio || '',
+        tags: currentUser.tags || [],
+        avatarBg: currentUser.avatarBg || '#2D6A4F',
+        avatarUrl: currentUser.avatarUrl,
+        bridges: currentUser.bridges || [],
+      };
+    }
+
     return {
       ...INITIAL_APPLY_DRAFT,
-      fullName: 'Alex Vance',
-      handle: 'alex_vance',
-      email: 'pending@worldgallery.org',
-      location: 'Kyoto, Japan',
-      bio: 'Exploring computational typography, analog tools, and quiet spaces.',
-      tags: ['designer', 'writer'],
+      fullName: '',
+      handle: '',
+      email: '',
+      location: '',
+      bio: '',
+      tags: [],
       avatarBg: '#2D6A4F',
     };
   });
 
   // Resolve initial waiting state from stored curator store or applicant record
   const [waitingState, setWaitingState] = useState<WaitingState>(() => {
+    if (initialState) return initialState;
     const cleanHandle = applicant.handle.trim().toLowerCase().replace(/^@/, '');
     const members = getAllGalleryMembers();
     if (members.some((m) => m.handle.toLowerCase() === cleanHandle)) {
@@ -104,19 +123,17 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
   const [memberSerial, setMemberSerial] = useState<string>('#0001');
 
   const checkLiveServerStatus = async (showFeedback = false) => {
-    const cleanHandle = applicant.handle.trim().toLowerCase().replace(/^@/, '');
-    if (!cleanHandle) return;
-
     try {
-      const res = await fetch(`/api/profiles/${encodeURIComponent(cleanHandle)}`).catch(() => null);
-      if (res && res.ok) {
-        const data = await res.json();
-        if (data?.data) {
-          const p = data.data;
+      // 1. Authoritative check via GET /api/me
+      const meRes = await fetch('/api/me').catch(() => null);
+      if (meRes && meRes.ok) {
+        const meData = await meRes.json();
+        if (meData?.profile) {
+          const p = meData.profile;
           if (p.memberNumber) {
             setMemberSerial(p.memberNumber);
           }
-          if (p.status === 'active' || p.memberNumber) {
+          if (p.status === 'active') {
             setWaitingState('approved');
             if (showFeedback) haptics.notification('success');
             return;
@@ -126,30 +143,40 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
             if (showFeedback) haptics.notification('warning');
             return;
           }
+          if (p.status === 'pending') {
+            setWaitingState('pending');
+            if (showFeedback) haptics.selection();
+            return;
+          }
+        }
+      }
+
+      // 2. Fallback check via handle lookup if session profile not returned
+      const cleanHandle = applicant.handle.trim().toLowerCase().replace(/^@/, '');
+      if (cleanHandle) {
+        const res = await fetch(`/api/profiles/${encodeURIComponent(cleanHandle)}`).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data?.data) {
+            const p = data.data;
+            if (p.memberNumber) {
+              setMemberSerial(p.memberNumber);
+            }
+            if (p.status === 'active' || p.memberNumber) {
+              setWaitingState('approved');
+              if (showFeedback) haptics.notification('success');
+              return;
+            }
+            if (p.status === 'rejected') {
+              setWaitingState('rejected');
+              if (showFeedback) haptics.notification('warning');
+              return;
+            }
+          }
         }
       }
     } catch {
-      // In DEV, fallback to local store if server unavailable
-      if (import.meta.env.DEV) {
-        const members = getAllGalleryMembers();
-        if (members.some((m) => m.handle.toLowerCase() === cleanHandle)) {
-          setWaitingState('approved');
-          if (showFeedback) haptics.notification('success');
-          return;
-        }
-        const pendingList = getPendingApplicants();
-        const foundPending = pendingList.find((p) => p.handle.toLowerCase() === cleanHandle);
-        if (foundPending?.status === 'rejected') {
-          setWaitingState('rejected');
-          if (showFeedback) haptics.notification('warning');
-          return;
-        }
-        if (foundPending?.status === 'approved') {
-          setWaitingState('approved');
-          if (showFeedback) haptics.notification('success');
-          return;
-        }
-      }
+      // ignore network hiccups silently
     }
 
     if (showFeedback) haptics.selection();
@@ -347,7 +374,7 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h2 className="font-sans text-[16px] font-bold text-ios-text truncate">
-                        {applicant.fullName || 'Alex Vance'}
+                        {applicant.fullName || 'Applicant'}
                       </h2>
                       {/* Availability Dot */}
                       <span
@@ -362,7 +389,7 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                       />
                     </div>
                     <p className="font-sans text-[13.5px] text-ios-secondary truncate">
-                      @{applicant.handle.replace(/^@/, '') || 'alex_vance'}
+                      {applicant.handle ? `@${applicant.handle.replace(/^@/, '')}` : ''}
                       {applicant.location ? ` • ${applicant.location}` : ''}
                     </p>
                   </div>
@@ -406,13 +433,13 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                     <div className="flex flex-col">
                       <span className="font-sans text-[15px] font-semibold text-ios-text">
                         {notifPermission === 'granted'
-                          ? 'Notifications on'
-                          : 'Be notified when admitted'}
+                          ? 'Browser alerts active'
+                          : 'In-browser alert'}
                       </span>
                       <span className="font-sans text-[12.5px] text-ios-secondary">
                         {notifPermission === 'granted'
-                          ? 'We will alert you instantly.'
-                          : 'Direct ping when your seal is approved.'}
+                          ? 'We will alert you while this browser tab stays open.'
+                          : 'Direct chime while this tab is open when approved.'}
                       </span>
                     </div>
                   </div>
@@ -513,11 +540,13 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-sans text-[19px] font-bold text-white truncate">
-                      {applicant.fullName || 'Alex Vance'}
+                      {applicant.fullName || 'Applicant'}
                     </h2>
-                    <p className="font-sans text-[14px] text-white/80 truncate">
-                      @{applicant.handle.replace(/^@/, '') || 'alex_vance'}
-                    </p>
+                    {applicant.handle && (
+                      <p className="font-sans text-[14px] text-white/80 truncate">
+                        @{applicant.handle.replace(/^@/, '')}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -600,7 +629,7 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h2 className="font-sans text-[16px] font-bold text-ios-text truncate">
-                        {applicant.fullName || 'Alex Vance'}
+                        {applicant.fullName || 'Applicant'}
                       </h2>
                       <span
                         className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -613,7 +642,7 @@ export default function WaitingRoom({ onNavigate, onBack }: WaitingRoomProps) {
                       />
                     </div>
                     <p className="font-sans text-[13.5px] text-ios-secondary truncate">
-                      @{applicant.handle.replace(/^@/, '') || 'alex_vance'}
+                      {applicant.handle ? `@${applicant.handle.replace(/^@/, '')}` : ''}
                       {applicant.location ? ` • ${applicant.location}` : ''}
                     </p>
                   </div>

@@ -46,9 +46,15 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss(), apiMiddlewarePlugin()],
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': path.resolve(__dirname, '.'),
+        react: path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'lucide-react', 'dompurify'],
     },
     build: {
       target: 'es2020',
@@ -57,9 +63,7 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'vendor-react': ['react', 'react-dom'],
-            'vendor-motion': ['motion/react'],
-            'vendor-icons': ['lucide-react'],
+            'vendor': ['react', 'react-dom', 'motion/react', 'lucide-react'],
           },
         },
       },

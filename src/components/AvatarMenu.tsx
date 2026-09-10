@@ -18,6 +18,7 @@ import { getCurrentUserProfile, USER_PROFILE_UPDATE_EVENT } from '../lib/userPro
 import { isCuratorSession } from '../lib/security';
 import { GalleryMember } from '../types/gallery';
 import InstallModal from './InstallModal';
+import { useAuth } from '../lib/authContext';
 
 interface AvatarMenuProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function AvatarMenu({
   onNavigate,
   onSignOut,
 }: AvatarMenuProps) {
+  const { isCurator: isAuthCurator } = useAuth();
   const menuRef = useRef<HTMLDivElement>(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -42,7 +44,7 @@ export default function AvatarMenu({
   const [userProfile, setUserProfile] = useState<GalleryMember>(getCurrentUserProfile());
 
   // Security Check: The Curator Desk row is strictly restricted to verified curator sessions
-  const isCurator = (() => {
+  const isCurator = isAuthCurator || (() => {
     if (typeof window === 'undefined') return false;
     try {
       const rawSession = localStorage.getItem('wg_user_session');

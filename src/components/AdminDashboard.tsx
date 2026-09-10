@@ -42,6 +42,15 @@ import {
 } from '../lib/curatorStore';
 import { getAdminEmail } from '../lib/security';
 import { saveCurrentUserProfile } from '../lib/userProfile';
+import {
+  dbLogout,
+  dbGetInviteSeals,
+  dbCreateInviteSeal,
+  dbDeleteInviteSeal,
+  dbGetCuratorStats,
+  dbDeclineApplicant,
+} from '../lib/dataService';
+import { useAuth } from '../lib/authContext';
 
 interface AdminDashboardProps {
   onNavigate: (path: string) => void;
@@ -51,6 +60,7 @@ interface AdminDashboardProps {
 type AdminTab = 'queue' | 'invites' | 'pulse';
 
 export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardProps) {
+  const { user, isCurator, isAuthenticated: isSessionAuth, refreshAuth, signOut } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [passcode, setPasscode] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
@@ -84,34 +94,6 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Sync session & data with route guard
-  useEffect(() => {
-    // Route Guard: If a standard non-curator member attempts to access /admin, redirect immediately to /gallery
-    if (typeof window !== 'undefined') {
-      try {
-        const rawSession = localStorage.getItem('wg_user_session');
-        if (rawSession) {
-          const session = JSON.parse(rawSession);
-          const configuredAdmin = getAdminEmail().toLowerCase().trim();
-          const userEmail = (session?.email || '').toLowerCase().trim();
-          if (session?.role === 'member' && (!configuredAdmin || userEmail !== configuredAdmin)) {
-            console.warn('[Security Guard] Non-curator member attempted to access /admin. Redirecting to /gallery.');
-            onNavigate('/gallery');
-            return;
-          }
-        }
-      } catch {
-        // Continue
-      }
-    }
-
-    const authed = isCuratorAuthenticated();
-    setIsAuthenticated(authed);
-    if (authed) {
-      refreshData();
-    }
-  }, [onNavigate]);
-
   const refreshData = async () => {
     try {
       const dbApps = await fetchPendingApplicantsFromDb();
@@ -123,9 +105,60 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     } catch {
       setApplicants(getPendingApplicants());
     }
-    setSeals(getInviteSeals());
-    setTelemetry(getCuratorTelemetry());
+
+    try {
+      const serverSeals = await dbGetInviteSeals();
+      if (serverSeals && serverSeals.length >= 0) {
+        setSeals(
+          serverSeals.map((s) => ({
+            id: s.id,
+            code: s.code,
+            description: s.description || '',
+            createdAt: s.createdAt ? new Date(s.createdAt).toISOString() : new Date().toISOString(),
+            status: (s.status === 'used' ? 'used' : 'active') as 'active' | 'used',
+          }))
+        );
+      } else {
+        setSeals(getInviteSeals());
+      }
+    } catch {
+      setSeals(getInviteSeals());
+    }
+
+    try {
+      const stats = await dbGetCuratorStats();
+      setTelemetry({
+        verifiedHumans: stats.activeCount,
+        restingRequests: stats.pendingCount,
+        activeBridges: stats.activeCount * 2,
+        approvedToday: stats.approvalsToday,
+        dailyCap: stats.dailyCap || 10,
+      });
+    } catch {
+      setTelemetry(getCuratorTelemetry());
+    }
   };
+
+  // Sync session & data with route guard
+  useEffect(() => {
+    // Route Guard: If a standard non-curator member attempts to access /admin, redirect immediately to /gallery
+    if (isSessionAuth && !isCurator) {
+      console.warn('[Security Guard] Non-curator member attempted to access /admin. Redirecting to /gallery.');
+      onNavigate('/gallery');
+      return;
+    }
+
+    if (isCurator) {
+      setIsAuthenticated(true);
+      refreshData();
+    } else {
+      const authed = isCuratorAuthenticated();
+      setIsAuthenticated(authed);
+      if (authed) {
+        refreshData();
+      }
+    }
+  }, [isCurator, isSessionAuth, onNavigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,15 +189,10 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
           setIsAuthenticating(false);
           haptics.notification('success');
           setCuratorAuthenticated(true, adminEmail);
-          if (data.user) {
-            localStorage.setItem('wg_user_session', JSON.stringify(data.user));
-          }
-          if (data.profile) {
-            saveCurrentUserProfile(data.profile);
-          }
+          await refreshAuth();
           setIsAuthenticated(true);
           setPasscode('');
-          refreshData();
+          await refreshData();
           return;
         }
       }
@@ -177,7 +205,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
         haptics.notification('success');
         setIsAuthenticated(true);
         setPasscode('');
-        refreshData();
+        await refreshData();
       } else {
         haptics.notification('error');
         if (!response && !navigator.onLine) {
@@ -195,8 +223,9 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     haptics.selection();
+    await signOut();
     setCuratorAuthenticated(false);
     setIsAuthenticated(false);
   };
@@ -234,35 +263,42 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
     }
   };
 
-  const handleConfirmDecline = () => {
+  const handleConfirmDecline = async () => {
     if (!decliningApplicant) return;
     haptics.impact('light');
+    await dbDeclineApplicant(decliningApplicant.id);
     declineApplicant(decliningApplicant.id, declineReason);
     showToast(`Archived application from ${decliningApplicant.fullName}.`);
     setDecliningApplicant(null);
     setDeclineReason('');
-    refreshData();
+    await refreshData();
   };
 
-  const handleCreateSeal = (e: React.FormEvent) => {
+  const handleCreateSeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSealNote.trim() && !newCustomCode.trim()) return;
 
     haptics.impact('medium');
-    const created = createInviteSeal(newSealNote, newCustomCode);
-    haptics.notification('success');
-    showToast(`Seal ${created.code} forged.`);
-    setIsCreatingSeal(false);
-    setNewSealNote('');
-    setNewCustomCode('');
-    refreshData();
+    const res = await dbCreateInviteSeal(newSealNote, newCustomCode);
+    if (res.success && res.seal) {
+      haptics.notification('success');
+      showToast(`Seal ${res.seal.code} forged.`);
+      setIsCreatingSeal(false);
+      setNewSealNote('');
+      setNewCustomCode('');
+      await refreshData();
+    } else {
+      haptics.notification('error');
+      showToast(res.error || 'Failed to forge seal.');
+    }
   };
 
-  const handleDeleteSeal = (id: string, code: string) => {
+  const handleDeleteSeal = async (id: string, code: string) => {
     haptics.impact('light');
+    await dbDeleteInviteSeal(id);
     deleteInviteSeal(id);
     showToast(`Seal ${code} retired.`);
-    refreshData();
+    await refreshData();
   };
 
   const handleCopySeal = (seal: InviteSeal) => {
@@ -524,7 +560,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
                   </span>
                 </div>
 
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence>
                   {applicants.map((app) => (
                     <motion.div
                       key={app.id}

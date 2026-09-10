@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft,
@@ -28,9 +28,7 @@ import { Skeleton, ErrorCard } from './StatesSystem';
 import ConnectSheet from './ConnectSheet';
 import ReportSheet from './ReportSheet';
 import BridgeActionRow from './BridgeActionRow';
-
-// Lazy-load photo viewer modal for reduced initial bundle footprint
-const PhotoViewerModal = lazy(() => import('./PhotoViewerModal'));
+import PhotoViewerModal from './PhotoViewerModal';
 
 interface ProfileDetailProps {
   handle: string;
@@ -158,9 +156,7 @@ export default function ProfileDetail({
         .toUpperCase()
     : 'W';
 
-  const bridges: ContactBridge[] = member?.bridges || [
-    { type: 'email', label: 'Email', maskedHint: 'm•••@w•••.org', unmaskedValue: 'member@worldgallery.org' },
-  ];
+  const bridges: ContactBridge[] = member?.bridges || [];
 
   const photos = member?.photos || (member?.avatarUrl ? [member.avatarUrl] : []);
 

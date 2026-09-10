@@ -55,7 +55,6 @@ world-gallery/
 │   │   ├── InstallModal.tsx        # iOS PWA installation sheet
 │   │   ├── LandingPage.tsx         # Public manifesto & entry point
 │   │   ├── PhotoViewerModal.tsx    # Fullscreen portrait viewer
-│   │   ├── PlaceholderRoom.tsx     # Restricted/rejected status rooms
 │   │   ├── ProfileDetail.tsx       # Member portrait & contact bridge view
 │   │   ├── ReportSheet.tsx         # Safety report sheet
 │   │   ├── RequestsScreen.tsx      # Incoming connection requests

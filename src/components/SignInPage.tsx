@@ -8,6 +8,7 @@ import { haptics } from '../lib/haptics';
 import { getAdminEmail, sanitizeText } from '../lib/security';
 import { dbVerifyUserCredentials } from '../lib/dataService';
 import { saveCurrentUserProfile } from '../lib/userProfile';
+import { useAuth } from '../lib/authContext';
 
 interface SignInPageProps {
   onNavigate: (path: string) => void;
@@ -18,6 +19,7 @@ interface SignInPageProps {
 const AUTH_STORAGE_KEY = 'wg_user_session';
 
 export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
+  const { refreshAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -118,15 +120,13 @@ export default function SignInPage({ onNavigate, onBack }: SignInPageProps) {
       if (response && response.ok) {
         const data = await response.json();
         if (data.verified && data.user) {
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data.user));
+          await refreshAuth();
           if (data.profile) {
             saveCurrentUserProfile(data.profile);
           }
           if (data.user.role === 'curator') {
-            localStorage.setItem('wg_curator_session_authenticated', 'true');
             handleAuthSuccess('/admin');
           } else {
-            localStorage.removeItem('wg_curator_session_authenticated');
             handleAuthSuccess('/gallery');
           }
           return;

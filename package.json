@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
+    "test": "tsx scripts/verify-security.ts",
     "lint": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "db:migrate": "tsx scripts/migrate.ts",
@@ -25,7 +26,6 @@
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
-    "pg": "^8.23.0",
     "postgres": "^3.4.9",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
@@ -35,7 +35,6 @@
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.14.0",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "autoprefixer": "^10.4.21",

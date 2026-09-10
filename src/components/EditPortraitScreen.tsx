@@ -675,7 +675,7 @@ export default function EditPortraitScreen({
                   type="text"
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  placeholder="e.g. Eleanor Vance"
+                  placeholder="Your full name"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-transparent focus:border-ios-forest focus:bg-white text-ios-text font-sans text-[15px] outline-none transition-all"
                 />
               </div>

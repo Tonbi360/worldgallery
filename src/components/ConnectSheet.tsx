@@ -19,6 +19,7 @@ import { GalleryMember, ContactBridge } from '../types/gallery';
 import { SentRequest } from '../types/activity';
 import { sanitizeText, checkClientRateLimit, recordClientAction } from '../lib/security';
 import { dbInsertConnectionRequest } from '../lib/dataService';
+import { getCurrentUserProfile } from '../lib/userProfile';
 import { BrandLoader } from './BrandLoader';
 
 interface ConnectSheetProps {
@@ -93,6 +94,20 @@ export default function ConnectSheet({
 
       // 3. Persist new sent request object in localStorage for /sent
       try {
+        const currentUser = getCurrentUserProfile();
+        const firstBridge = currentUser.bridges?.[0];
+        const mySharedContact = firstBridge
+          ? {
+              type: firstBridge.type,
+              label: firstBridge.label,
+              value: firstBridge.unmaskedValue || firstBridge.maskedHint || `@${currentUser.handle || 'member'}`,
+            }
+          : {
+              type: 'direct',
+              label: 'Direct Bridge',
+              value: currentUser.handle ? `@${currentUser.handle}` : 'World Gallery Member',
+            };
+
         const storedSent = localStorage.getItem('wg_sent_requests');
         const sentList: SentRequest[] = storedSent ? JSON.parse(storedSent) : [];
         const newSent: SentRequest = {
@@ -105,11 +120,7 @@ export default function ConnectSheet({
           channelLabel: bridgeObj?.label || 'Direct Bridge',
           channelType: bridgeObj?.type || 'email',
           sentDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          mySharedContact: {
-            type: 'email',
-            label: 'Email',
-            value: 'member@worldgallery.org',
-          },
+          mySharedContact,
           status: 'pending',
           expiresInDays: 7,
         };

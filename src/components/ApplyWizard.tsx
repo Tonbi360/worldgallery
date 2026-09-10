@@ -132,6 +132,8 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
   // Step 4 final submit state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitSuccess, setIsSubmitSuccess] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Read URL query params & stored invite code on initial mount
   useEffect(() => {
@@ -291,9 +293,6 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
   const step4Valid = isInviteMode ? cleanInviteCode.length >= 3 : true;
 
   // Photo upload handling with MIME validation, 5MB limit, and image optimization
-  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -434,9 +433,6 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
           serverSuccess = true;
           returnedStatus = data.status || (isCodeValid ? 'active' : 'pending');
 
-          if (data.user) {
-            localStorage.setItem('wg_user_session', JSON.stringify(data.user));
-          }
           if (data.profile) {
             saveCurrentUserProfile(data.profile);
           }
@@ -447,13 +443,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || "Couldn't submit — try again.");
       } else {
-        // Network / Fetch failed (e.g. offline)
-        if (import.meta.env.DEV) {
-          console.warn('[ApplyWizard DEV] /api/apply unreachable. Proceeding with local dev state.');
-          serverSuccess = true;
-        } else {
-          throw new Error("Couldn't submit — try again.");
-        }
+        throw new Error("Couldn't submit — try again.");
       }
 
       if (serverSuccess) {
@@ -471,44 +461,6 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
           bridges: sanitizedBridges,
         }));
         localStorage.removeItem(DRAFT_STORAGE_KEY);
-
-        if (import.meta.env.DEV) {
-          if (isCodeValid) {
-            if (matchingSeal) {
-              const updatedSeals = activeSeals.map((s) =>
-                s.id === matchingSeal.id
-                  ? { ...s, status: 'used' as const, usedByHandle: sanitizedHandle, usedAt: new Date().toISOString() }
-                  : s
-              );
-              saveInviteSeals(updatedSeals);
-            }
-          } else {
-            const pendingApplicant: PendingApplicant = {
-              id: `app-${Date.now()}`,
-              fullName: sanitizedFullName,
-              handle: sanitizedHandle,
-              location: sanitizedLocation,
-              bio: sanitizedBio,
-              tags: sanitizedTags,
-              availability: draft.availability,
-              avatarBg: draft.avatarBg,
-              avatarUrl: draft.avatarUrl,
-              photos: draft.avatarUrl ? [draft.avatarUrl] : [],
-              appliedAt: new Date().toISOString(),
-              entryType: isInviteMode ? 'invite' : 'queue',
-              status: 'pending',
-              bridges: sanitizedBridges.map((b) => ({
-                type: b.type,
-                label: CHANNEL_CONFIGS[b.type]?.label || b.customTypeName || b.type,
-                maskedHint: maskContactValue(b.type, b.value),
-                unmaskedValue: b.value,
-                isLink: b.type === 'website',
-              })),
-            };
-            const currentPending = getPendingApplicants();
-            savePendingApplicants([pendingApplicant, ...currentPending]);
-          }
-        }
 
         setIsSubmitting(false);
         setIsSubmitSuccess(true);
@@ -586,7 +538,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
         ref={scrollContainerRef}
         className="relative flex-1 w-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
-        <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={step}
             custom={direction}
@@ -845,7 +797,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
                       type="text"
                       value={draft.fullName}
                       onChange={(e) => updateDraft({ fullName: e.target.value })}
-                      placeholder="e.g. Alex Vance"
+                      placeholder="Your full name"
                       autoComplete="name"
                       autoCorrect="off"
                       spellCheck={false}

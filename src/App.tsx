@@ -1,24 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { motion } from 'motion/react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { auditEnvironmentVariables } from './lib/security';
 import { BrandLoader } from './components/BrandLoader';
 
-// Code-split routes for fast bundle parsing and publishing
-const LandingPage = lazy(() => import('./components/LandingPage'));
-const SignInPage = lazy(() => import('./components/SignInPage'));
-const ApplyWizard = lazy(() => import('./components/ApplyWizard'));
-const WaitingRoom = lazy(() => import('./components/WaitingRoom'));
-const GalleryDirectory = lazy(() => import('./components/GalleryDirectory'));
-const ProfileDetail = lazy(() => import('./components/ProfileDetail'));
-const RequestsScreen = lazy(() => import('./components/RequestsScreen'));
-const SentScreen = lazy(() => import('./components/SentScreen'));
-const PlaceholderRoom = lazy(() => import('./components/PlaceholderRoom'));
-const EditPortraitScreen = lazy(() => import('./components/EditPortraitScreen'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
-const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage'));
+import LandingPage from './components/LandingPage';
+import SignInPage from './components/SignInPage';
+import ApplyWizard from './components/ApplyWizard';
+import WaitingRoom from './components/WaitingRoom';
+import GalleryDirectory from './components/GalleryDirectory';
+import ProfileDetail from './components/ProfileDetail';
+import RequestsScreen from './components/RequestsScreen';
+import SentScreen from './components/SentScreen';
+import EditPortraitScreen from './components/EditPortraitScreen';
+import AdminDashboard from './components/AdminDashboard';
+import ResetPasswordPage from './components/ResetPasswordPage';
+import { AuthProvider } from './lib/authContext';
 
 function RouteLoadingFallback() {
   return (
@@ -150,11 +149,10 @@ export default function App() {
 
       case '/rejected':
         return (
-          <PlaceholderRoom
-            title="Application Notice"
-            subtitle="This room opens in an upcoming build."
-            badge="STATUS"
-            onBack={() => handleNavigate('/')}
+          <WaitingRoom
+            initialState="rejected"
+            onNavigate={handleNavigate}
+            onBack={handleBack}
           />
         );
 
@@ -186,40 +184,32 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-full min-h-[100dvh] bg-ios-bg text-ios-text font-sans selection:bg-ios-blue/20 selection:text-ios-blue">
-      <div
-        id="ios-app-root"
-        className="relative flex flex-col min-h-[100dvh] w-full max-w-md mx-auto overflow-hidden bg-ios-bg shadow-sm"
-      >
-        <AnimatePresence mode="popLayout" custom={navigationDirection} initial={false}>
+    <AuthProvider>
+      <div className="min-h-full min-h-[100dvh] bg-ios-bg text-ios-text font-sans selection:bg-ios-blue/20 selection:text-ios-blue">
+        <div
+          id="ios-app-root"
+          className="relative flex flex-col min-h-[100dvh] w-full max-w-md mx-auto overflow-hidden bg-ios-bg shadow-sm"
+        >
           <motion.div
             key={currentPath.split('?')[0]}
             custom={navigationDirection}
             variants={{
               enter: (dir: string) => ({
-                x: dir === 'forward' ? '100%' : '-20%',
-                opacity: dir === 'forward' ? 0.9 : 0.8,
-                zIndex: 1,
+                x: dir === 'forward' ? 24 : -24,
+                opacity: 0,
               }),
               center: {
                 x: 0,
                 opacity: 1,
-                zIndex: 1,
               },
-              exit: (dir: string) => ({
-                x: dir === 'forward' ? '-20%' : '100%',
-                opacity: dir === 'forward' ? 0.8 : 0.9,
-                zIndex: dir === 'forward' ? 0 : 2,
-              }),
             }}
             initial="enter"
             animate="center"
-            exit="exit"
             transition={{
               type: 'spring',
-              stiffness: 340,
-              damping: 32,
-              mass: 0.9,
+              stiffness: 380,
+              damping: 34,
+              mass: 0.8,
             }}
             className="w-full h-full min-h-[100dvh]"
           >
@@ -229,8 +219,8 @@ export default function App() {
               </Suspense>
             </ErrorBoundary>
           </motion.div>
-        </AnimatePresence>
+        </div>
       </div>
-    </div>
+    </AuthProvider>
   );
 }

@@ -49,6 +49,7 @@ export const connection_requests = pgTable('connection_requests', {
   sender_offered_channel: text('sender_offered_channel'),
   note: text('note').notNull(),
   status: text('status').default('pending').notNull(), // 'pending' | 'approved' | 'declined' | 'expired'
+  approved_contact_value: text('approved_contact_value'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   expires_at: timestamp('expires_at', { withTimezone: true }),
 }, (table) => [

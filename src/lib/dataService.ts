@@ -45,6 +45,12 @@ export async function dbGetAllActiveProfiles(): Promise<GalleryMember[]> {
   return [];
 }
 
+export function getAuthHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+  };
+}
+
 export async function dbUpsertProfile(profile: GalleryMember, _userId?: string): Promise<boolean> {
   try {
     const cleanHandle = sanitizeText(profile.handle).toLowerCase().replace(/^@/, '');
@@ -59,7 +65,7 @@ export async function dbUpsertProfile(profile: GalleryMember, _userId?: string):
 
     const res = await fetch('/api/profiles', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(sanitized),
     }).catch(() => null);
 
@@ -75,22 +81,7 @@ export async function dbUpsertProfile(profile: GalleryMember, _userId?: string):
 // ==========================================
 
 function getCuratorHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-  if (typeof window !== 'undefined') {
-    try {
-      const rawSession = localStorage.getItem('wg_user_session');
-      if (rawSession) {
-        const session = JSON.parse(rawSession);
-        if (session.email) headers['x-curator-email'] = session.email;
-        if (session.role) headers['x-curator-role'] = session.role;
-      }
-    } catch {
-      // Continue
-    }
-  }
-  return headers;
+  return getAuthHeaders();
 }
 
 export async function dbGetPendingApplicants(): Promise<PendingApplicant[]> {
@@ -148,7 +139,7 @@ export async function dbDeclineApplicant(applicantId: string): Promise<boolean> 
 export async function dbVerifyUserCredentials(
   email: string,
   passcode: string
-): Promise<{ verified: boolean; user?: { id: string; email: string; role: string; name?: string }; error?: string }> {
+): Promise<{ verified: boolean; user?: { id: string; email: string; role: string; name?: string }; profile?: any; error?: string }> {
   const cleanEmail = sanitizeText(email).toLowerCase().trim();
 
   try {
@@ -175,7 +166,7 @@ export async function dbVerifyUserCredentials(
     const data = await res.json().catch(() => null);
 
     if (res.ok && data?.verified) {
-      return { verified: true, user: data.user };
+      return { verified: true, user: data.user, profile: data.profile };
     }
 
     return {
@@ -187,6 +178,34 @@ export async function dbVerifyUserCredentials(
       verified: false,
       error: "The gallery couldn't be reached. Try again.",
     };
+  }
+}
+
+export async function dbGetMe(): Promise<{ ok: boolean; user?: any; profile?: any }> {
+  try {
+    const res = await fetch('/api/me');
+    if (res && res.ok) {
+      const data = await res.json();
+      return { ok: true, user: data.user, profile: data.profile };
+    }
+    return { ok: false };
+  } catch {
+    return { ok: false };
+  }
+}
+
+export async function dbLogout(): Promise<void> {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' });
+  } catch {
+    // continue
+  }
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('wg_session_token');
+    localStorage.removeItem('wg_user_session');
+    localStorage.removeItem('wg_auth_user');
+    localStorage.removeItem('wg_curator_session_authenticated');
+    localStorage.removeItem('wg_admin_session_authenticated');
   }
 }
 
@@ -207,24 +226,31 @@ export async function dbInsertConnectionRequest(params: {
 
   const payload = {
     id: newId,
-    requesterId: sanitizeText(params.requesterId),
     receiverId: sanitizeText(params.receiverId),
     requestedChannel: sanitizeText(params.requestedChannel),
     senderOfferedChannel: params.senderOfferedChannel ? sanitizeText(params.senderOfferedChannel) : undefined,
     note: sanitizeText(params.note),
-    status: 'pending',
-    createdAt: now.toISOString(),
-    expiresAt: expiresAt.toISOString(),
   };
 
   try {
-    fetch('/api/connections', {
+    const res = await fetch('/api/connections', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
-    }).catch(() => {});
-  } catch {
-    // non-blocking
+    }).catch(() => null);
+
+    if (res && !res.ok) {
+      const errData = await res.json().catch(() => null);
+      return {
+        success: false,
+        error: errData?.error || 'Failed to send connection request',
+      };
+    }
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || 'Network error sending connection request',
+    };
   }
 
   return {
@@ -243,9 +269,14 @@ export async function dbInsertConnectionRequest(params: {
   };
 }
 
-export async function dbGetIncomingRequestsForReceiver(receiverId: string): Promise<IncomingRequest[]> {
+export async function dbGetIncomingRequestsForReceiver(receiverId?: string): Promise<IncomingRequest[]> {
   try {
-    const res = await fetch(`/api/connections/incoming?receiverId=${encodeURIComponent(sanitizeText(receiverId))}`).catch(() => null);
+    const url = receiverId
+      ? `/api/connections/incoming?receiverId=${encodeURIComponent(sanitizeText(receiverId))}`
+      : '/api/connections/incoming';
+    const res = await fetch(url, {
+      headers: getAuthHeaders(),
+    }).catch(() => null);
     if (res && res.ok) {
       const data = await res.json();
       if (Array.isArray(data?.data)) return data.data;
@@ -256,9 +287,14 @@ export async function dbGetIncomingRequestsForReceiver(receiverId: string): Prom
   return [];
 }
 
-export async function dbGetSentRequestsForRequester(requesterId: string): Promise<SentRequest[]> {
+export async function dbGetSentRequestsForRequester(requesterId?: string): Promise<SentRequest[]> {
   try {
-    const res = await fetch(`/api/connections/sent?requesterId=${encodeURIComponent(sanitizeText(requesterId))}`).catch(() => null);
+    const url = requesterId
+      ? `/api/connections/sent?requesterId=${encodeURIComponent(sanitizeText(requesterId))}`
+      : '/api/connections/sent';
+    const res = await fetch(url, {
+      headers: getAuthHeaders(),
+    }).catch(() => null);
     if (res && res.ok) {
       const data = await res.json();
       if (Array.isArray(data?.data)) return data.data;
@@ -268,3 +304,143 @@ export async function dbGetSentRequestsForRequester(requesterId: string): Promis
   }
   return [];
 }
+
+export async function dbApproveConnectionRequest(requestId: string): Promise<{ success: boolean; request?: any; error?: string }> {
+  try {
+    const res = await fetch(`/api/connections/${encodeURIComponent(requestId)}/approve`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ id: requestId }),
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json();
+      return { success: true, request: data.request };
+    }
+    const errData = await res?.json().catch(() => null);
+    return { success: false, error: errData?.error || 'Failed to approve request' };
+  } catch (err: any) {
+    console.warn('[DataService] Error in dbApproveConnectionRequest:', err);
+    return { success: false, error: err?.message || 'Network error' };
+  }
+}
+
+export async function dbDeclineConnectionRequest(requestId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/connections/${encodeURIComponent(requestId)}/decline`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ id: requestId }),
+    }).catch(() => null);
+
+    return !!(res && res.ok);
+  } catch (err) {
+    console.warn('[DataService] Error in dbDeclineConnectionRequest:', err);
+    return false;
+  }
+}
+
+// ==========================================
+// 5. INVITATION SEALS QUERY LAYER (SERVER-AUTHORITATIVE)
+// ==========================================
+
+export interface ServerInviteSeal {
+  id: string;
+  code: string;
+  description: string | null;
+  createdBy: string | null;
+  usedBy: string | null;
+  usedAt: string | null;
+  createdAt: string;
+  status: 'active' | 'used' | 'revoked';
+}
+
+export async function dbGetInviteSeals(): Promise<ServerInviteSeal[]> {
+  try {
+    const res = await fetch('/api/curator/seal', { headers: getAuthHeaders() }).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data?.data)) {
+        return data.data.map((s: any) => ({
+          id: s.id,
+          code: s.code,
+          description: s.description || '',
+          createdBy: s.created_by,
+          usedBy: s.used_by,
+          usedAt: s.used_at,
+          createdAt: s.created_at,
+          status: s.used_by ? 'used' : 'active',
+        }));
+      }
+    }
+  } catch (error) {
+    console.warn('[DataService] Error in dbGetInviteSeals:', error);
+  }
+  return [];
+}
+
+export async function dbCreateInviteSeal(
+  note?: string,
+  code?: string
+): Promise<{ success: boolean; seal?: ServerInviteSeal; error?: string }> {
+  try {
+    const res = await fetch('/api/curator/seal', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ description: note, code }),
+    }).catch(() => null);
+
+    if (res && res.ok) {
+      const data = await res.json();
+      const s = data.seal;
+      return {
+        success: true,
+        seal: {
+          id: s.id,
+          code: s.code,
+          description: s.description || '',
+          createdBy: s.created_by,
+          usedBy: s.used_by,
+          usedAt: s.used_at,
+          createdAt: s.created_at,
+          status: s.used_by ? 'used' : 'active',
+        },
+      };
+    }
+    const errData = await res?.json().catch(() => null);
+    return { success: false, error: errData?.error || 'Failed to forge seal' };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Network error forging seal' };
+  }
+}
+
+export async function dbDeleteInviteSeal(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/curator/seal/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    }).catch(() => null);
+    return !!(res && res.ok);
+  } catch {
+    return false;
+  }
+}
+
+export async function dbGetCuratorStats(): Promise<{
+  activeCount: number;
+  pendingCount: number;
+  approvalsToday: number;
+  dailyCap: number;
+}> {
+  try {
+    const res = await fetch('/api/curator/stats', { headers: getAuthHeaders() }).catch(() => null);
+    if (res && res.ok) {
+      const data = await res.json();
+      if (data?.stats) return data.stats;
+    }
+  } catch {
+    // fallback
+  }
+  return { activeCount: 0, pendingCount: 0, approvalsToday: 0, dailyCap: 10 };
+}
+
