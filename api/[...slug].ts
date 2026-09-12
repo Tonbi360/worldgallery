@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-export const BUILD_STAMP = '1.0.0';
+export const BUILD_STAMP = '1.0.1';
 
 // ============================================================================
 // 1. INLINED CORS & HTTP RESPONSE UTILITIES (ZERO EXTERNAL RELATIVE IMPORTS)
