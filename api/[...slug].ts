@@ -240,7 +240,17 @@ async function verifyCuratorApiAuth(req: any, sql?: any): Promise<{ authorized: 
 
 function parseRequestPath(req: any): { method: string; pathname: string; slug: string[]; query: Record<string, string> } {
   const method = String(req.method || 'GET').toUpperCase();
-  const urlString = String(req.url || '/api/health');
+  
+  // Inspect possible original URLs provided by proxies or Vercel rewrites
+  const rawUrl = (
+    req?.headers?.['x-forwarded-url'] ||
+    req?.headers?.['x-original-url'] ||
+    req?.headers?.['x-rewrite-url'] ||
+    req?.headers?.['x-matched-path'] ||
+    req?.url ||
+    '/api/health'
+  );
+  const urlString = String(rawUrl);
   const parsedUrl = new URL(urlString, 'http://localhost');
   const pathname = parsedUrl.pathname.replace(/\/+$/, '') || '/';
   
@@ -248,14 +258,28 @@ function parseRequestPath(req: any): { method: string; pathname: string; slug: s
   const cleanParts = pathname.replace(/^\/+/, '').split('/').filter(Boolean);
   
   // Strip 'api' if leading
-  const slug = cleanParts[0] === 'api' ? cleanParts.slice(1) : cleanParts;
-  
-  // If req.query contains slug array (Vercel catch-all style), respect that as fallback
+  let slug = cleanParts[0] === 'api' ? cleanParts.slice(1) : cleanParts;
+
+  // Filter out literal '[...slug]' token if Vercel internal router passed it as pathname
+  if (slug.length === 1 && (slug[0] === '[...slug]' || slug[0] === ':slug*' || slug[0] === 'index')) {
+    slug = [];
+  }
+
+  // If req.query contains slug array (Vercel catch-all style), respect that as primary or fallback
   if (req.query?.slug) {
     const rawSlug = req.query.slug;
-    const customSlug = Array.isArray(rawSlug) ? rawSlug : [String(rawSlug)];
-    if (customSlug.length > 0 && slug.length === 0) {
-      slug.push(...customSlug);
+    let customParts: string[] = [];
+    if (Array.isArray(rawSlug)) {
+      customParts = rawSlug.flatMap((s: any) => String(s).split('/').filter(Boolean));
+    } else if (typeof rawSlug === 'string') {
+      customParts = rawSlug.split('/').filter(Boolean);
+    }
+    // Remove leading 'api' if present in query slug
+    if (customParts[0] === 'api') {
+      customParts = customParts.slice(1);
+    }
+    if (customParts.length > 0 && (slug.length === 0 || slug[0] === '[...slug]')) {
+      slug = customParts;
     }
   }
 

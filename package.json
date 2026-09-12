@@ -3,12 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "bun@1.4.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "bun": ">=1.1.0"
+  },
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "test": "tsx scripts/verify-security.ts",
+    "test:smoke": "tsx scripts/smoke-test-routes.ts",
     "lint": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "db:migrate": "tsx scripts/migrate.ts",
