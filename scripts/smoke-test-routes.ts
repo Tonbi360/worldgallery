@@ -1,4 +1,4 @@
-import handler from '../api/[...slug]';
+import handler from '../api/index';
 
 interface MockResponse {
   statusCode: number;
