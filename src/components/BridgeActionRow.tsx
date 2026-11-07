@@ -48,24 +48,24 @@ export default function BridgeActionRow({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 bg-[#F2F2F7] rounded-xl border border-ios-separator/30">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-xl border border-ios-separator/30 dark:border-white/10">
       {/* Left: Channel Info & Value */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-7 h-7 rounded-lg bg-white text-ios-forest flex items-center justify-center flex-shrink-0 shadow-2xs">
+        <div className="w-7 h-7 rounded-lg bg-white dark:bg-[#1C1C1E] text-ios-forest dark:text-[#52B788] flex items-center justify-center flex-shrink-0 shadow-2xs">
           {getChannelIcon(channelType)}
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-sans font-semibold text-[13px] text-ios-text truncate">
+            <span className="font-sans font-semibold text-[13px] text-ios-text dark:text-white truncate">
               {channelLabel}
             </span>
             {subtitle && (
-              <span className="font-sans text-[11px] text-ios-secondary truncate">
+              <span className="font-sans text-[11px] text-ios-secondary dark:text-white/60 truncate">
                 ({subtitle})
               </span>
             )}
           </div>
-          <span className="font-mono text-[12.5px] text-ios-secondary truncate select-all">
+          <span className="font-mono text-[12.5px] text-ios-secondary dark:text-white/60 truncate select-all">
             {unmaskedValue}
           </span>
         </div>
@@ -93,11 +93,11 @@ export default function BridgeActionRow({
               type="button"
               onClick={handleCopy}
               title="Copy to clipboard"
-              className="w-8 h-8 rounded-lg bg-white hover:bg-[#E5E5EA] active:scale-95 text-ios-secondary hover:text-ios-text flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+              className="w-8 h-8 rounded-lg bg-white dark:bg-[#1C1C1E] hover:bg-[#E5E5EA] dark:hover:bg-[#3A3A3C] active:scale-95 text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-2xs border border-transparent dark:border-white/10"
               aria-label="Copy contact"
             >
               {copied ? (
-                <Check className="w-3.5 h-3.5 text-ios-forest stroke-[3]" />
+                <Check className="w-3.5 h-3.5 text-ios-forest dark:text-[#52B788] stroke-[3]" />
               ) : (
                 <Copy className="w-3.5 h-3.5" />
               )}

@@ -32,19 +32,19 @@ export default function InstallModal({ isOpen, onClose }: InstallModalProps) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 350 }}
-            className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl z-10 select-none pb-8 sm:pb-6"
+            className="relative w-full max-w-md bg-white dark:bg-[#1C1C1E] text-ios-text dark:text-white rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl z-10 select-none pb-8 sm:pb-6 border-t sm:border border-transparent dark:border-white/10"
           >
             {/* Header */}
-            <div className="flex items-start justify-between pb-4 border-b border-ios-separator/40">
+            <div className="flex items-start justify-between pb-4 border-b border-ios-separator/40 dark:border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-ios-forest text-white font-serif font-bold text-lg flex items-center justify-center shadow-sm">
                   W
                 </div>
                 <div>
-                  <h3 className="font-sans font-bold text-[18px] text-ios-text leading-tight">
+                  <h3 className="font-sans font-bold text-[18px] text-ios-text dark:text-white leading-tight">
                     Install World Gallery
                   </h3>
-                  <p className="font-sans text-[13px] text-ios-secondary mt-0.5">
+                  <p className="font-sans text-[13px] text-ios-secondary dark:text-white/60 mt-0.5">
                     Experience as a native iOS app
                   </p>
                 </div>
@@ -56,7 +56,7 @@ export default function InstallModal({ isOpen, onClose }: InstallModalProps) {
                   haptics.selection();
                   onClose();
                 }}
-                className="w-8 h-8 rounded-full bg-[#F2F2F7] text-ios-secondary hover:text-ios-text flex items-center justify-center cursor-pointer transition-colors"
+                className="w-8 h-8 rounded-full bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white flex items-center justify-center cursor-pointer transition-colors"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />

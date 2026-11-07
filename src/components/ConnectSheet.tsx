@@ -246,7 +246,7 @@ export default function ConnectSheet({
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-sans text-[13px] font-semibold transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-ios-forest text-white shadow-xs'
-                              : 'bg-[#F2F2F7] text-ios-secondary hover:text-ios-text border border-ios-separator/40'
+                              : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white border border-ios-separator/40 dark:border-white/10'
                           }`}
                         >
                           {getBridgeIcon(bridge.type)}
@@ -260,7 +260,7 @@ export default function ConnectSheet({
                 {/* Note Textarea */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="font-sans text-[12px] font-bold uppercase tracking-wider text-ios-secondary">
+                    <label className="font-sans text-[12px] font-bold uppercase tracking-wider text-ios-secondary dark:text-white/70">
                       Your Note
                     </label>
                     <span
@@ -269,7 +269,7 @@ export default function ConnectSheet({
                           ? 'text-[#DC2626]'
                           : charCount >= 120
                           ? 'text-[#D97706]'
-                          : 'text-ios-secondary/70'
+                          : 'text-ios-secondary/70 dark:text-white/60'
                       }`}
                     >
                       {charCount}/140
@@ -284,13 +284,13 @@ export default function ConnectSheet({
                     }}
                     rows={3}
                     placeholder="Hi! I came across your profile and would love to connect because…"
-                    className="w-full bg-[#F2F2F7] border border-ios-separator/50 rounded-2xl p-3.5 font-sans text-[15px] text-ios-text placeholder:text-ios-secondary/60 outline-none focus:border-ios-forest/50 focus:bg-white transition-all resize-none"
+                    className="w-full bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-ios-separator/50 dark:border-white/10 rounded-2xl p-3.5 font-sans text-[15px] text-ios-text dark:text-white placeholder:text-ios-secondary/60 dark:placeholder:text-white/35 outline-none focus:border-ios-forest/50 focus:bg-white dark:focus:bg-[#2C2C2E] transition-all resize-none"
                   />
                 </div>
 
                 {/* Rate Limit Alert */}
                 {rateLimitError && (
-                  <div className="flex items-start gap-2 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl p-3 text-[13px] text-[#991B1B]">
+                  <div className="flex items-start gap-2 bg-[#FEF2F2] dark:bg-red-950/40 border border-[#FCA5A5] dark:border-red-900 rounded-xl p-3 text-[13px] text-[#991B1B] dark:text-red-300">
                     <AlertCircle className="w-4 h-4 text-[#DC2626] shrink-0 mt-0.5" />
                     <span>{rateLimitError}</span>
                   </div>
@@ -304,7 +304,7 @@ export default function ConnectSheet({
                     disabled={!note.trim() || isSending}
                     className={`w-full py-3.5 px-6 rounded-ios-pill font-sans font-semibold text-[15.5px] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
                       !note.trim()
-                        ? 'bg-[#E5E5EA] text-[#8E8E93] cursor-not-allowed'
+                        ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#8E8E93] dark:text-white/40 cursor-not-allowed'
                         : 'bg-ios-forest text-white hover:brightness-105 active:scale-[0.98]'
                     }`}
                   >

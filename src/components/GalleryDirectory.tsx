@@ -333,8 +333,8 @@ export default function GalleryDirectory({
         </div>
 
         {/* iOS Inset Search Bar */}
-        <div className="relative flex items-center w-full bg-[#E5E5EA]/75 focus-within:bg-[#E5E5EA] rounded-xl px-3 py-2 transition-colors mb-3">
-          <Search className="w-4.5 h-4.5 text-ios-secondary/70 mr-2.5 flex-shrink-0" />
+        <div className="relative flex items-center w-full bg-[#E5E5EA]/75 dark:bg-[#1C1C1E] dark:border dark:border-white/10 focus-within:bg-[#E5E5EA] dark:focus-within:bg-[#2C2C2E] rounded-xl px-3 py-2 transition-colors mb-3">
+          <Search className="w-4.5 h-4.5 text-ios-secondary/70 dark:text-white/50 mr-2.5 flex-shrink-0" />
           <input
             type="text"
             value={searchQuery}
@@ -343,7 +343,7 @@ export default function GalleryDirectory({
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full bg-transparent border-0 outline-none font-sans text-[15.5px] text-ios-text placeholder:text-ios-secondary/60"
+            className="w-full bg-transparent border-0 outline-none font-sans text-[15.5px] text-ios-text dark:text-white placeholder:text-ios-secondary/60 dark:placeholder:text-white/40"
           />
           {searchQuery && (
             <button
@@ -352,7 +352,7 @@ export default function GalleryDirectory({
                 haptics.selection();
                 setSearchQuery('');
               }}
-              className="p-1 text-ios-secondary hover:text-ios-text active:scale-90 transition-all cursor-pointer"
+              className="p-1 text-ios-secondary dark:text-white/60 hover:text-ios-text dark:hover:text-white active:scale-90 transition-all cursor-pointer"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -371,16 +371,16 @@ export default function GalleryDirectory({
             }}
             className={`font-sans text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               availabilityFilter === 'all'
-                ? 'bg-ios-text text-white shadow-xs'
-                : 'bg-white text-ios-secondary hover:text-ios-text border border-ios-separator/40'
+                ? 'bg-ios-text dark:bg-white text-white dark:text-black shadow-xs font-bold'
+                : 'bg-white dark:bg-[#1C1C1E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white border border-ios-separator/40 dark:border-white/10'
             }`}
           >
             <span>All</span>
             <span
               className={`text-[11px] px-1.5 py-0.2 rounded-full ${
                 availabilityFilter === 'all'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[#F2F2F7] text-ios-secondary'
+                  ? 'bg-white/20 dark:bg-black/15 text-white dark:text-black font-bold'
+                  : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70'
               }`}
             >
               {counts.all}
@@ -396,17 +396,17 @@ export default function GalleryDirectory({
             }}
             className={`font-sans text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               availabilityFilter === 'open'
-                ? 'bg-[#E8F5E9] text-ios-forest border border-ios-forest/30 shadow-xs font-bold'
-                : 'bg-white text-ios-secondary hover:text-ios-text border border-ios-separator/40'
+                ? 'bg-[#E8F5E9] dark:bg-[#1B4332] text-ios-forest dark:text-[#52B788] border border-ios-forest/30 dark:border-emerald-600/40 shadow-xs font-bold'
+                : 'bg-white dark:bg-[#1C1C1E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white border border-ios-separator/40 dark:border-white/10'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-ios-forest" />
+            <span className="w-2 h-2 rounded-full bg-ios-forest dark:bg-[#52B788]" />
             <span>Open</span>
             <span
               className={`text-[11px] px-1.5 py-0.2 rounded-full ${
                 availabilityFilter === 'open'
-                  ? 'bg-ios-forest/15 text-ios-forest'
-                  : 'bg-[#F2F2F7] text-ios-secondary'
+                  ? 'bg-ios-forest/15 dark:bg-emerald-900/50 text-ios-forest dark:text-[#52B788]'
+                  : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70'
               }`}
             >
               {counts.open}
@@ -422,17 +422,17 @@ export default function GalleryDirectory({
             }}
             className={`font-sans text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               availabilityFilter === 'quiet'
-                ? 'bg-[#FEF3C7] text-[#D97706] border border-[#D97706]/30 shadow-xs font-bold'
-                : 'bg-white text-ios-secondary hover:text-ios-text border border-ios-separator/40'
+                ? 'bg-[#FEF3C7] dark:bg-amber-950/60 text-[#D97706] dark:text-amber-300 border border-[#D97706]/30 dark:border-amber-600/40 shadow-xs font-bold'
+                : 'bg-white dark:bg-[#1C1C1E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white border border-ios-separator/40 dark:border-white/10'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-[#D97706]" />
+            <span className="w-2 h-2 rounded-full bg-[#D97706] dark:bg-amber-400" />
             <span>Quiet</span>
             <span
               className={`text-[11px] px-1.5 py-0.2 rounded-full ${
                 availabilityFilter === 'quiet'
-                  ? 'bg-[#D97706]/15 text-[#D97706]'
-                  : 'bg-[#F2F2F7] text-ios-secondary'
+                  ? 'bg-[#D97706]/15 dark:bg-amber-900/50 text-[#D97706] dark:text-amber-300'
+                  : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70'
               }`}
             >
               {counts.quiet}
@@ -448,17 +448,17 @@ export default function GalleryDirectory({
             }}
             className={`font-sans text-[13px] font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               availabilityFilter === 'paused'
-                ? 'bg-[#E5E5EA] text-[#6B7280] border border-[#6B7280]/30 shadow-xs font-bold'
-                : 'bg-white text-ios-secondary hover:text-ios-text border border-ios-separator/40'
+                ? 'bg-[#E5E5EA] dark:bg-[#2C2C2E] text-[#6B7280] dark:text-white border border-[#6B7280]/30 dark:border-white/20 shadow-xs font-bold'
+                : 'bg-white dark:bg-[#1C1C1E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white border border-ios-separator/40 dark:border-white/10'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-[#6B7280]" />
+            <span className="w-2 h-2 rounded-full bg-[#6B7280] dark:bg-gray-400" />
             <span>Paused</span>
             <span
               className={`text-[11px] px-1.5 py-0.2 rounded-full ${
                 availabilityFilter === 'paused'
-                  ? 'bg-[#6B7280]/15 text-[#6B7280]'
-                  : 'bg-[#F2F2F7] text-ios-secondary'
+                  ? 'bg-[#6B7280]/15 dark:bg-gray-800 text-[#6B7280] dark:text-gray-300'
+                  : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70'
               }`}
             >
               {counts.paused}

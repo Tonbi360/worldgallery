@@ -313,28 +313,28 @@ export default function RequestsScreen({
                             </div>
                           </div>
 
-                          <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#E8F5E9] text-ios-forest border border-ios-forest/30 flex-shrink-0">
+                          <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#E8F5E9] dark:bg-[#1B4332] text-ios-forest dark:text-[#52B788] border border-ios-forest/30 dark:border-emerald-600/40 flex-shrink-0">
                             Approved
                           </span>
                         </div>
 
                         {/* Channel Badge */}
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F2F2F7] border border-ios-separator/40 text-ios-text text-[12.5px] font-medium w-fit">
-                          <ChannelIcon type={req.channelType || 'email'} className="w-3.5 h-3.5 text-ios-forest" />
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-ios-separator/40 dark:border-white/10 text-ios-text dark:text-white text-[12.5px] font-medium w-fit">
+                          <ChannelIcon type={req.channelType || 'email'} className="w-3.5 h-3.5 text-ios-forest dark:text-[#52B788]" />
                           <span>{req.channelLabel || req.channelType || 'Contact'}</span>
                         </div>
 
                         {/* Quoted Note */}
                         {req.note && (
-                          <div className="bg-[#F2F2F7] p-3 rounded-xl border border-ios-separator/30">
-                            <p className="font-serif italic text-[14px] text-ios-text/90 leading-relaxed">
+                          <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-3 rounded-xl border border-ios-separator/30 dark:border-white/10">
+                            <p className="font-serif italic text-[14px] text-ios-text/90 dark:text-white/90 leading-relaxed">
                               "{req.note}"
                             </p>
                           </div>
                         )}
 
                         {/* Reciprocal Shared Status Button */}
-                        <div className="w-full py-3 px-4 rounded-xl bg-[#E8F5E9] text-ios-forest border border-ios-forest/30 font-sans font-semibold text-[14px] flex items-center justify-center gap-2 text-center">
+                        <div className="w-full py-3 px-4 rounded-xl bg-[#E8F5E9] dark:bg-[#1B4332] text-ios-forest dark:text-[#52B788] border border-ios-forest/30 dark:border-emerald-600/40 font-sans font-semibold text-[14px] flex items-center justify-center gap-2 text-center">
                           <Check className="w-4 h-4 stroke-[3]" />
                           <span>You shared your {req.mySharedContact?.label || req.channelLabel || 'contact'}</span>
                         </div>

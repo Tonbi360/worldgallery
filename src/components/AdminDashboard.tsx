@@ -420,7 +420,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
         </div>
 
         {/* iOS Segmented Control [Queue | Invites | Pulse] */}
-        <div className="flex items-center p-1 bg-[#E5E5EA]/80 rounded-xl shadow-inner-xs">
+        <div className="flex items-center p-1 bg-[#E5E5EA]/80 dark:bg-[#1C1C1E] rounded-xl shadow-inner-xs border border-transparent dark:border-white/10">
           <button
             type="button"
             onClick={() => {
@@ -429,8 +429,8 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
             }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-sans text-[13.5px] font-semibold transition-all cursor-pointer ${
               activeTab === 'queue'
-                ? 'bg-white text-ios-text shadow-xs'
-                : 'text-ios-secondary hover:text-ios-text'
+                ? 'bg-white dark:bg-[#2C2C2E] text-ios-text dark:text-white shadow-xs'
+                : 'text-ios-secondary dark:text-white/60 hover:text-ios-text dark:hover:text-white'
             }`}
           >
             <Inbox className="w-3.5 h-3.5" />
@@ -450,8 +450,8 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
             }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-sans text-[13.5px] font-semibold transition-all cursor-pointer ${
               activeTab === 'invites'
-                ? 'bg-white text-ios-text shadow-xs'
-                : 'text-ios-secondary hover:text-ios-text'
+                ? 'bg-white dark:bg-[#2C2C2E] text-ios-text dark:text-white shadow-xs'
+                : 'text-ios-secondary dark:text-white/60 hover:text-ios-text dark:hover:text-white'
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -466,8 +466,8 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
             }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-sans text-[13.5px] font-semibold transition-all cursor-pointer ${
               activeTab === 'pulse'
-                ? 'bg-white text-ios-text shadow-xs'
-                : 'text-ios-secondary hover:text-ios-text'
+                ? 'bg-white dark:bg-[#2C2C2E] text-ios-text dark:text-white shadow-xs'
+                : 'text-ios-secondary dark:text-white/60 hover:text-ios-text dark:hover:text-white'
             }`}
           >
             <Activity className="w-3.5 h-3.5" />

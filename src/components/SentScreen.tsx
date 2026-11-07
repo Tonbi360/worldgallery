@@ -164,26 +164,26 @@ export default function SentScreen({ onBack, onNavigate }: SentScreenProps) {
 
                     {/* Status Pill */}
                     {sent.status === 'approved' ? (
-                      <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#E8F5E9] text-ios-forest border border-ios-forest/30 flex-shrink-0">
+                      <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#E8F5E9] dark:bg-[#1B4332] text-ios-forest dark:text-[#52B788] border border-ios-forest/30 dark:border-emerald-600/40 flex-shrink-0">
                         Approved
                       </span>
                     ) : (
-                      <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#FEF3C7] text-[#D97706] border border-[#D97706]/30 flex-shrink-0">
+                      <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#FEF3C7] dark:bg-amber-950/60 text-[#D97706] dark:text-amber-300 border border-[#D97706]/30 dark:border-amber-600/40 flex-shrink-0">
                         Pending
                       </span>
                     )}
                   </div>
 
                   {/* Channel Badge */}
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F2F2F7] border border-ios-separator/40 text-ios-text text-[12.5px] font-medium w-fit">
-                    <ChannelIcon type={sent.channelType || 'email'} className="w-3.5 h-3.5 text-ios-forest" />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-ios-separator/40 dark:border-white/10 text-ios-text dark:text-white text-[12.5px] font-medium w-fit">
+                    <ChannelIcon type={sent.channelType || 'email'} className="w-3.5 h-3.5 text-ios-forest dark:text-[#52B788]" />
                     <span>{sent.channelLabel || sent.channelType || 'Contact'}</span>
                   </div>
 
                   {/* Quoted Note */}
                   {sent.note && (
-                    <div className="bg-[#F2F2F7] p-3 rounded-xl border border-ios-separator/30">
-                      <p className="font-serif italic text-[14px] text-ios-text/90 leading-relaxed">
+                    <div className="bg-[#F2F2F7] dark:bg-[#2C2C2E] p-3 rounded-xl border border-ios-separator/30 dark:border-white/10">
+                      <p className="font-serif italic text-[14px] text-ios-text/90 dark:text-white/90 leading-relaxed">
                         "{sent.note}"
                       </p>
                     </div>

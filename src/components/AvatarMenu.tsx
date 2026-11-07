@@ -147,10 +147,10 @@ export default function AvatarMenu({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: -8 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="absolute top-12 right-0 w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-ios-separator/60 p-2 z-50 select-none overflow-hidden"
+              className="absolute top-12 right-0 w-72 bg-white/95 dark:bg-[#1C1C1E] backdrop-blur-xl rounded-2xl shadow-2xl border border-ios-separator/60 dark:border-white/10 p-2 z-50 select-none overflow-hidden"
             >
               {/* Identity Header */}
-              <div className="flex items-center gap-3 p-2.5 pb-3 border-b border-ios-separator/40">
+              <div className="flex items-center gap-3 p-2.5 pb-3 border-b border-ios-separator/40 dark:border-white/10">
                 <div
                   style={{ backgroundColor: userProfile.avatarBg || '#2D6A4F' }}
                   className="w-10 h-10 rounded-full text-white font-serif font-bold text-sm flex items-center justify-center shadow-xs flex-shrink-0 overflow-hidden"
@@ -175,10 +175,10 @@ export default function AvatarMenu({
                   )}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="font-sans font-semibold text-[14.5px] text-ios-text truncate leading-tight">
+                  <span className="font-sans font-semibold text-[14.5px] text-ios-text dark:text-white truncate leading-tight">
                     {userProfile.fullName || 'Member'}
                   </span>
-                  <span className="font-sans text-[12.5px] text-ios-secondary truncate">
+                  <span className="font-sans text-[12.5px] text-ios-secondary dark:text-white/60 truncate">
                     @{userProfile.handle || 'member'}
                   </span>
                 </div>
@@ -190,13 +190,13 @@ export default function AvatarMenu({
                 <button
                   type="button"
                   onClick={() => handleRowClick(() => onNavigate('/requests'))}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-ios-forest/10 text-ios-forest flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-ios-forest/10 dark:bg-ios-forest/25 text-ios-forest dark:text-[#52B788] flex items-center justify-center">
                       <Inbox className="w-4 h-4" />
                     </div>
-                    <span className="font-sans font-medium text-[14px] text-ios-text">
+                    <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                       Requests
                     </span>
                   </div>
@@ -207,7 +207,7 @@ export default function AvatarMenu({
                         {pendingRequestsCount}
                       </span>
                     )}
-                    <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                    <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
                   </div>
                 </button>
 
@@ -215,49 +215,49 @@ export default function AvatarMenu({
                 <button
                   type="button"
                   onClick={() => handleRowClick(() => onNavigate('/sent'))}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 text-ios-blue flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 dark:bg-[#007AFF]/25 text-ios-blue flex items-center justify-center">
                       <Send className="w-3.5 h-3.5" />
                     </div>
-                    <span className="font-sans font-medium text-[14px] text-ios-text">
+                    <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                       Sent
                     </span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                  <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
                 </button>
 
                 {/* 3. Edit Portrait Row */}
                 <button
                   type="button"
                   onClick={() => handleRowClick(() => onNavigate('/portrait'))}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-[#8E8E93]/15 text-ios-secondary flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-[#8E8E93]/15 text-ios-secondary dark:text-white/70 flex items-center justify-center">
                       <User className="w-4 h-4" />
                     </div>
-                    <span className="font-sans font-medium text-[14px] text-ios-text">
+                    <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                       Edit Portrait
                     </span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                  <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
                 </button>
 
                 {/* 4. Install App Row */}
                 {isStandalone ? (
                   /* Standalone display mode ONLY */
-                  <div className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#F2F2F7]/60 text-left">
+                  <div className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#F2F2F7]/60 dark:bg-[#2C2C2E]/60 text-left">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 text-ios-forest flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4 text-ios-forest" />
+                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 dark:bg-ios-forest/25 text-ios-forest dark:text-[#52B788] flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4 text-ios-forest dark:text-[#52B788]" />
                       </div>
-                      <span className="font-sans font-medium text-[14px] text-ios-text">
+                      <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                         Installed
                       </span>
                     </div>
-                    <span className="font-sans text-[11px] font-semibold text-ios-forest bg-[#E8F5E9] px-2 py-0.5 rounded-full">
+                    <span className="font-sans text-[11px] font-semibold text-ios-forest dark:text-[#52B788] bg-[#E8F5E9] dark:bg-[#1B4332] px-2 py-0.5 rounded-full">
                       Standalone
                     </span>
                   </div>
@@ -266,65 +266,65 @@ export default function AvatarMenu({
                   <button
                     type="button"
                     onClick={handleInstallClick}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 text-ios-forest flex items-center justify-center">
-                        <Download className="w-4 h-4 text-ios-forest" />
+                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 dark:bg-ios-forest/25 text-ios-forest dark:text-[#52B788] flex items-center justify-center">
+                        <Download className="w-4 h-4 text-ios-forest dark:text-[#52B788]" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-sans font-medium text-[14px] text-ios-text">
+                        <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                           Install App
                         </span>
-                        <span className="font-sans text-[11px] text-ios-forest font-medium">
+                        <span className="font-sans text-[11px] text-ios-forest dark:text-[#52B788] font-medium">
                           Tap to install directly
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                    <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
                   </button>
                 ) : (
                   /* Not installed, beforeinstallprompt never fired */
                   <button
                     type="button"
                     onClick={handleInstallClick}
-                    className="w-full flex items-start justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7]/50 active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                    className="w-full flex items-start justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7]/50 dark:hover:bg-[#2C2C2E]/50 active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-start gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-[#8E8E93]/15 text-ios-secondary flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Download className="w-4 h-4 text-ios-secondary" />
+                      <div className="w-7 h-7 rounded-lg bg-[#8E8E93]/15 text-ios-secondary dark:text-white/70 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Download className="w-4 h-4 text-ios-secondary dark:text-white/70" />
                       </div>
                       <div className="flex flex-col min-w-0">
-                        <span className="font-sans font-medium text-[14px] text-ios-secondary">
+                        <span className="font-sans font-medium text-[14px] text-ios-secondary dark:text-white/70">
                           Install App
                         </span>
-                        <span className="font-sans text-[11px] text-[#DC2626] font-normal leading-tight mt-0.5">
+                        <span className="font-sans text-[11px] text-[#DC2626] dark:text-red-400 font-normal leading-tight mt-0.5">
                           Chrome criteria not met — see Diagnostics.
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-ios-secondary/40 flex-shrink-0 mt-1" />
+                    <ChevronRight className="w-4 h-4 text-ios-secondary/40 dark:text-white/30 flex-shrink-0 mt-1" />
                   </button>
                 )}
 
-                {/* 5. Curator Desk Row — Security Guard: ONLY rendered when signed-in user matches VITE_ADMIN_EMAIL */}
+                {/* 5. Curator Desk Row */}
                 {isCurator && (
                   <button
                     type="button"
                     onClick={() => handleRowClick(() => onNavigate('/admin'))}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 text-ios-forest flex items-center justify-center">
+                      <div className="w-7 h-7 rounded-lg bg-ios-forest/10 dark:bg-ios-forest/25 text-ios-forest dark:text-[#52B788] flex items-center justify-center">
                         <ShieldCheck className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-sans font-medium text-[14px] text-ios-text">
+                        <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                           Curator Desk
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                    <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
                   </button>
                 )}
 
@@ -332,22 +332,22 @@ export default function AvatarMenu({
                 <button
                   type="button"
                   onClick={() => handleRowClick(() => onNavigate('/terms'))}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-ios-separator/20 text-ios-secondary flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-ios-separator/20 dark:bg-white/10 text-ios-secondary dark:text-white/70 flex items-center justify-center">
                       <FileText className="w-4 h-4" />
                     </div>
-                    <span className="font-sans font-medium text-[14px] text-ios-text">
+                    <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
                       Terms & Privacy
                     </span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-ios-secondary/50" />
+                  <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
                 </button>
               </div>
 
               {/* Hairline Divider */}
-              <div className="border-t border-ios-separator/50 my-1" />
+              <div className="border-t border-ios-separator/50 dark:border-white/10 my-1" />
 
               {/* Sign Out Row (iOS Red) */}
               <button
@@ -357,9 +357,9 @@ export default function AvatarMenu({
                   onClose();
                   onSignOut();
                 }}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-red-50 active:bg-red-100 transition-colors cursor-pointer text-left text-[#DC2626]"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/40 active:bg-red-100 dark:active:bg-red-900/60 transition-colors cursor-pointer text-left text-[#DC2626] dark:text-red-400"
               >
-                <div className="w-7 h-7 rounded-lg bg-red-100/60 text-[#DC2626] flex items-center justify-center">
+                <div className="w-7 h-7 rounded-lg bg-red-100/60 dark:bg-red-900/40 text-[#DC2626] dark:text-red-400 flex items-center justify-center">
                   <LogOut className="w-4 h-4" />
                 </div>
                 <span className="font-sans font-medium text-[14px]">

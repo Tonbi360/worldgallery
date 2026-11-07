@@ -595,7 +595,7 @@ export default function EditPortraitScreen({
                     <button
                       type="button"
                       onClick={() => secondaryFileInputRef.current?.click()}
-                      className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-dashed border-ios-separator/70 bg-[#F2F2F7] flex items-center justify-center text-ios-secondary hover:border-ios-forest/50 active:scale-95 transition-all cursor-pointer relative"
+                      className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-dashed border-ios-separator/70 dark:border-white/20 bg-[#F2F2F7] dark:bg-[#2C2C2E] flex items-center justify-center text-ios-secondary dark:text-white/50 hover:border-ios-forest/50 active:scale-95 transition-all cursor-pointer relative"
                     >
                       {form.photos && form.photos[1] ? (
                         <img
@@ -710,7 +710,7 @@ export default function EditPortraitScreen({
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   placeholder="Your full name"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-transparent focus:border-ios-forest focus:bg-white text-ios-text font-sans text-[15px] outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-transparent dark:border-white/10 focus:border-ios-forest focus:bg-white dark:focus:bg-[#2C2C2E] text-ios-text dark:text-white font-sans text-[15px] outline-none transition-all placeholder:text-ios-secondary/50 dark:placeholder:text-white/35"
                 />
               </div>
 
@@ -719,7 +719,7 @@ export default function EditPortraitScreen({
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="field-handle"
-                    className="font-sans text-[12px] font-semibold text-ios-secondary uppercase tracking-wider"
+                    className="font-sans text-[12px] font-semibold text-ios-secondary dark:text-white/70 uppercase tracking-wider"
                   >
                     Handle
                   </label>
@@ -727,8 +727,8 @@ export default function EditPortraitScreen({
                     <span
                       className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-full ${
                         handleAvailability
-                          ? 'bg-[#E8F5E9] text-ios-forest'
-                          : 'bg-[#FEE2E2] text-[#DC2626]'
+                          ? 'bg-[#E8F5E9] dark:bg-[#1B4332] text-ios-forest dark:text-[#52B788]'
+                          : 'bg-[#FEE2E2] dark:bg-red-950/60 text-[#DC2626] dark:text-red-400'
                       }`}
                     >
                       {handleAvailability ? '✓ Available' : '✕ Taken'}
@@ -737,7 +737,7 @@ export default function EditPortraitScreen({
                 </div>
 
                 <div className="relative flex items-center">
-                  <span className="absolute left-3.5 font-mono text-[15px] text-ios-secondary select-none">
+                  <span className="absolute left-3.5 font-mono text-[15px] text-ios-secondary dark:text-white/50 select-none">
                     @
                   </span>
                   <input
@@ -751,12 +751,12 @@ export default function EditPortraitScreen({
                       })
                     }
                     placeholder="handle"
-                    className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border ${
-                      !handleAvailability ? 'border-[#DC2626] bg-red-50/50' : 'border-transparent'
-                    } focus:border-ios-forest focus:bg-white text-ios-text font-mono text-[15px] outline-none transition-all`}
+                    className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl bg-[#F2F2F7] dark:bg-[#2C2C2E] border ${
+                      !handleAvailability ? 'border-[#DC2626] bg-red-50/50 dark:bg-red-950/30' : 'border-transparent dark:border-white/10'
+                    } focus:border-ios-forest focus:bg-white dark:focus:bg-[#2C2C2E] text-ios-text dark:text-white font-mono text-[15px] outline-none transition-all placeholder:text-ios-secondary/50 dark:placeholder:text-white/35`}
                   />
                 </div>
-                <p className="font-sans text-[12px] text-ios-secondary pt-0.5">
+                <p className="font-sans text-[12px] text-ios-secondary dark:text-white/60 pt-0.5">
                   Your handle is your seal across the gallery.
                 </p>
               </div>
@@ -765,7 +765,7 @@ export default function EditPortraitScreen({
               <div className="space-y-1">
                 <label
                   htmlFor="field-location"
-                  className="font-sans text-[12px] font-semibold text-ios-secondary uppercase tracking-wider block"
+                  className="font-sans text-[12px] font-semibold text-ios-secondary dark:text-white/70 uppercase tracking-wider block"
                 >
                   Location
                 </label>
@@ -775,7 +775,7 @@ export default function EditPortraitScreen({
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   placeholder="City, Country"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-transparent focus:border-ios-forest focus:bg-white text-ios-text font-sans text-[15px] outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-transparent dark:border-white/10 focus:border-ios-forest focus:bg-white dark:focus:bg-[#2C2C2E] text-ios-text dark:text-white font-sans text-[15px] outline-none transition-all placeholder:text-ios-secondary/50 dark:placeholder:text-white/35"
                 />
               </div>
 
@@ -784,13 +784,13 @@ export default function EditPortraitScreen({
                 <div className="flex items-center justify-between">
                   <label
                     htmlFor="field-bio"
-                    className="font-sans text-[12px] font-semibold text-ios-secondary uppercase tracking-wider"
+                    className="font-sans text-[12px] font-semibold text-ios-secondary dark:text-white/70 uppercase tracking-wider"
                   >
                     Statement & Craft Bio
                   </label>
                   <span
                     className={`font-mono text-[11px] ${
-                      bioCount > 160 ? 'text-[#DC2626] font-bold' : 'text-ios-secondary'
+                      bioCount > 160 ? 'text-[#DC2626] font-bold' : 'text-ios-secondary dark:text-white/60'
                     }`}
                   >
                     {bioCount}/160
@@ -802,7 +802,7 @@ export default function EditPortraitScreen({
                   value={form.bio}
                   onChange={(e) => setForm({ ...form, bio: e.target.value })}
                   placeholder="Describe your craft, materials, or research focus in quiet words..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] border border-transparent focus:border-ios-forest focus:bg-white text-ios-text font-sans text-[14.5px] leading-relaxed outline-none resize-none transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-transparent dark:border-white/10 focus:border-ios-forest focus:bg-white dark:focus:bg-[#2C2C2E] text-ios-text dark:text-white font-sans text-[14.5px] leading-relaxed outline-none resize-none transition-all placeholder:text-ios-secondary/50 dark:placeholder:text-white/35"
                 />
               </div>
             </section>
@@ -862,21 +862,21 @@ export default function EditPortraitScreen({
                     }
                   }}
                   placeholder="Add custom discipline (press Enter)..."
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-[#F2F2F7] border border-transparent focus:border-ios-forest focus:bg-white text-ios-text font-sans text-[13.5px] outline-none transition-all"
+                  className="flex-1 px-3.5 py-2 rounded-xl bg-[#F2F2F7] dark:bg-[#2C2C2E] border border-transparent dark:border-white/10 focus:border-ios-forest focus:bg-white dark:focus:bg-[#2C2C2E] text-ios-text dark:text-white font-sans text-[13.5px] outline-none transition-all placeholder:text-ios-secondary/50 dark:placeholder:text-white/35"
                 />
                 <button
                   type="button"
                   onClick={() => handleAddTag(customTagInput)}
                   disabled={!customTagInput.trim()}
-                  className="px-3.5 py-2 rounded-xl bg-[#E5E5EA] disabled:opacity-40 text-ios-text font-sans text-[13px] font-semibold active:bg-[#D1D1D6] transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#E5E5EA] dark:bg-[#3A3A3C] disabled:opacity-40 text-ios-text dark:text-white font-sans text-[13px] font-semibold active:bg-[#D1D1D6] dark:active:bg-[#48484A] transition-colors cursor-pointer"
                 >
                   Add
                 </button>
               </div>
 
               {/* Suggested Pills */}
-              <div className="space-y-1.5 pt-2 border-t border-ios-separator/20">
-                <span className="font-sans text-[11.5px] text-ios-secondary block">
+              <div className="space-y-1.5 pt-2 border-t border-ios-separator/20 dark:border-white/10">
+                <span className="font-sans text-[11.5px] text-ios-secondary dark:text-white/60 block">
                   Suggestions:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -889,8 +889,8 @@ export default function EditPortraitScreen({
                         onClick={() => handleToggleSuggestionTag(tag)}
                         className={`px-2.5 py-1 rounded-full font-sans text-[12px] font-medium transition-colors cursor-pointer ${
                           isSelected
-                            ? 'bg-ios-forest/15 text-ios-forest border border-ios-forest/30'
-                            : 'bg-[#F2F2F7] text-ios-secondary hover:text-ios-text border border-transparent'
+                            ? 'bg-ios-forest/15 dark:bg-emerald-950/60 text-ios-forest dark:text-[#52B788] border border-ios-forest/30 dark:border-emerald-600/40'
+                            : 'bg-[#F2F2F7] dark:bg-[#2C2C2E] text-ios-secondary dark:text-white/70 hover:text-ios-text dark:hover:text-white border border-transparent dark:border-white/10'
                         }`}
                       >
                         {isSelected ? '✓ ' : '+ '}
@@ -909,14 +909,14 @@ export default function EditPortraitScreen({
               aria-label="Availability Status"
               className="bg-ios-card rounded-2xl p-4 sm:p-5 shadow-ios-card space-y-3.5"
             >
-              <div className="border-b border-ios-separator/30 pb-2.5">
-                <span className="font-sans font-bold text-[13px] uppercase tracking-wider text-ios-secondary">
+              <div className="border-b border-ios-separator/30 dark:border-white/10 pb-2.5">
+                <span className="font-sans font-bold text-[13px] uppercase tracking-wider text-ios-secondary dark:text-white/70">
                   Availability
                 </span>
               </div>
 
               {/* Segmented Control */}
-              <div className="p-1 rounded-xl bg-[#F2F2F7] flex items-center gap-1 border border-ios-separator/30">
+              <div className="p-1 rounded-xl bg-[#F2F2F7] dark:bg-[#2C2C2E] flex items-center gap-1 border border-ios-separator/30 dark:border-white/10">
                 {(['open', 'quiet', 'paused'] as const).map((mode) => {
                   const isSelected = form.availability === mode;
                   const label = mode === 'open' ? 'Open' : mode === 'quiet' ? 'Quiet' : 'Paused';
@@ -931,20 +931,20 @@ export default function EditPortraitScreen({
                       className={`flex-1 py-2 rounded-lg font-sans text-[13.5px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                         isSelected
                           ? mode === 'open'
-                            ? 'bg-[#E8F5E9] text-[#1B4D3E] shadow-2xs'
+                            ? 'bg-[#E8F5E9] dark:bg-[#1B4332] text-[#1B4D3E] dark:text-[#52B788] shadow-2xs font-bold'
                             : mode === 'quiet'
-                            ? 'bg-[#FEF3C7] text-[#B45309] shadow-2xs'
-                            : 'bg-[#E5E5EA] text-ios-text shadow-2xs'
-                          : 'text-ios-secondary hover:text-ios-text'
+                            ? 'bg-[#FEF3C7] dark:bg-amber-950/60 text-[#B45309] dark:text-amber-300 shadow-2xs font-bold'
+                            : 'bg-[#E5E5EA] dark:bg-[#3A3A3C] text-ios-text dark:text-white shadow-2xs font-bold'
+                          : 'text-ios-secondary dark:text-white/60 hover:text-ios-text dark:hover:text-white'
                       }`}
                     >
                       <span
                         className={`w-2 h-2 rounded-full ${
                           mode === 'open'
-                            ? 'bg-[#2D6A4F]'
+                            ? 'bg-[#2D6A4F] dark:bg-[#52B788]'
                             : mode === 'quiet'
-                            ? 'bg-[#D97706]'
-                            : 'bg-[#6B7280]'
+                            ? 'bg-[#D97706] dark:bg-amber-400'
+                            : 'bg-[#6B7280] dark:bg-gray-400'
                         }`}
                       />
                       <span>{label}</span>

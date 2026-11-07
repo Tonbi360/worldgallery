@@ -487,7 +487,7 @@ export default function ProfileDetail({
                 haptics.selection();
                 onNavigate('/portrait');
               }}
-              className="w-full bg-white hover:bg-[#F2F2F7] text-ios-text border border-ios-separator/60 font-sans font-semibold text-[15.5px] py-3.5 px-6 rounded-ios-pill active:scale-[0.98] transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+              className="w-full bg-white dark:bg-[#1C1C1E] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] text-ios-text dark:text-white border border-ios-separator/60 dark:border-white/15 font-sans font-semibold text-[15.5px] py-3.5 px-6 rounded-ios-pill active:scale-[0.98] transition-all cursor-pointer text-center flex items-center justify-center gap-2"
             >
               <Edit3 className="w-4 h-4" />
               <span>Edit Portrait</span>

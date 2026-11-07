@@ -56,22 +56,159 @@ html {
   width: 100%;
 }
 
+/* ==========================================================================
+   AUTHENTIC IOS DARK MODE SPECIFICATION
+   Apple HIG Color Hierarchy:
+   - Level 0 (System Grouped Background): #000000
+   - Level 1 (Elevated Cards & Sheets):   #1C1C1E
+   - Level 2 (Inputs, Grouped Insets):    #2C2C2E
+   - Level 3 (Tertiary, Badges, Hover):   #3A3A3C
+   - Separators & Hairlines:              #38383A
+   ========================================================================== */
+
 html.dark {
   color-scheme: dark;
   background-color: #000000;
-  color: #F2F2F7;
+  color: #FFFFFF;
   --color-ios-bg: #000000;
   --color-ios-card: #1C1C1E;
-  --color-ios-text: #F2F2F7;
-  --color-ios-secondary: rgba(235, 235, 245, 0.6);
-  --color-ios-tertiary: rgba(235, 235, 245, 0.3);
+  --color-ios-text: #FFFFFF;
+  --color-ios-secondary: rgba(235, 235, 245, 0.65);
+  --color-ios-tertiary: rgba(235, 235, 245, 0.35);
   --color-ios-separator: #38383A;
   --color-ios-input-bg: #2C2C2E;
 }
 
 html.dark body {
   background-color: #000000;
-  color: #F2F2F7;
+  color: #FFFFFF;
+}
+
+/* Base App Container & Surfaces */
+html.dark #ios-app-root,
+html.dark main,
+html.dark header,
+html.dark .bg-ios-bg {
+  background-color: #000000 !important;
+  color: #FFFFFF;
+}
+
+html.dark .bg-ios-card {
+  background-color: #1C1C1E !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Floating Dropdowns, Sheets & Menus (AvatarMenu, InstallModal, BottomSheets) */
+html.dark .bg-white,
+html.dark .bg-white\/95,
+html.dark .bg-white\/90,
+html.dark .bg-white\/85,
+html.dark .bg-white\/80,
+html.dark .bg-white\/70 {
+  background-color: #1C1C1E !important;
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* All Form Inputs, Textareas & Text Fields */
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+html.dark textarea,
+html.dark select {
+  background-color: #2C2C2E !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: rgba(235, 235, 245, 0.4) !important;
+}
+
+html.dark input:focus,
+html.dark textarea:focus {
+  background-color: #2C2C2E !important;
+  border-color: #2D6A4F !important;
+}
+
+/* Light Grey Surface Overrides in Dark Mode (#F2F2F7, #E5E5EA, #F9F9FB) */
+html.dark [class*="bg-[#F2F2F7]"],
+html.dark [class*="bg-[#E5E5EA]"],
+html.dark [class*="bg-[#F9F9FB]"],
+html.dark .bg-ios-input-bg {
+  background-color: #2C2C2E !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Hover and Active rows */
+html.dark [class*="hover:bg-[#F2F2F7]"]:hover,
+html.dark [class*="active:bg-[#E5E5EA]"]:active,
+html.dark [class*="hover:bg-[#E5E5EA]"]:hover {
+  background-color: #3A3A3C !important;
+}
+
+/* Typography & Text Contrast */
+html.dark .text-ios-text {
+  color: #FFFFFF !important;
+}
+
+html.dark .text-ios-secondary {
+  color: rgba(235, 235, 245, 0.65) !important;
+}
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4 {
+  color: #FFFFFF !important;
+}
+
+/* Gallery Filter Pills & Badges */
+html.dark .bg-white.text-ios-secondary,
+html.dark button[class*="bg-white"] {
+  background-color: #1C1C1E !important;
+  color: rgba(235, 235, 245, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark .bg-\[\#E8F5E9\] {
+  background-color: rgba(45, 106, 79, 0.3) !important;
+  color: #52B788 !important;
+  border-color: rgba(45, 106, 79, 0.5) !important;
+}
+
+html.dark .bg-\[\#FFF3E0\],
+html.dark .bg-amber-100 {
+  background-color: rgba(255, 149, 0, 0.25) !important;
+  color: #FBBF24 !important;
+  border-color: rgba(255, 149, 0, 0.4) !important;
+}
+
+html.dark .bg-blue-100 {
+  background-color: rgba(0, 122, 255, 0.25) !important;
+  color: #60A5FA !important;
+}
+
+/* Frosted Glass in Dark Mode */
+html.dark .ios-glass-nav {
+  background-color: rgba(0, 0, 0, 0.82) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .ios-glass-card,
+html.dark .ios-glass-sheet {
+  background-color: rgba(28, 28, 30, 0.94) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  backdrop-filter: blur(25px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Hairlines & Separators */
+html.dark hr,
+html.dark [class*="border-ios-separator"],
+html.dark [class*="divide-ios-separator"] {
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 body {
