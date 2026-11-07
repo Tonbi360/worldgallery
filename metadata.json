@@ -1,0 +1,6 @@
+{
+  "name": "World Gallery",
+  "description": "A member-only human registry and high-trust directory built as a native iOS-style PWA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
