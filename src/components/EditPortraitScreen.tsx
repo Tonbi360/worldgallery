@@ -112,6 +112,7 @@ export default function EditPortraitScreen({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
 
   // Save UI State
   const [isSaving, setIsSaving] = useState(false);
@@ -1598,43 +1599,72 @@ export default function EditPortraitScreen({
                 This action permanently removes your presence, portrait, contact bridges, and connections from World Gallery in compliance with privacy regulations. This cannot be undone.
               </p>
 
-              {deleteError && (
-                <div className="bg-red-50 text-[#DC2626] text-[12px] p-2.5 rounded-xl font-medium">
-                  {deleteError}
-                </div>
-              )}
+              {(() => {
+                const targetHandle = (form.handle || initialProfile.handle || sessionInfo.handle || '').toLowerCase().replace(/^@/, '');
+                const isDeleteConfirmed = deleteConfirmInput.trim().toLowerCase().replace(/^@/, '') === targetHandle && targetHandle.length > 0;
 
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={() => setShowDeleteModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-[#E5E5EA] text-ios-text font-sans font-semibold text-[13.5px] cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={async () => {
-                    setIsDeleting(true);
-                    setDeleteError(null);
-                    haptics.impact('heavy');
-                    const res = await dbDeleteMyAccount();
-                    if (res.ok) {
-                      setShowDeleteModal(false);
-                      onNavigate('/');
-                    } else {
-                      setIsDeleting(false);
-                      setDeleteError(res.error || 'Failed to erase account.');
-                      haptics.notification('error');
-                    }
-                  }}
-                  className="flex-1 py-2.5 rounded-xl bg-[#DC2626] text-white font-sans font-semibold text-[13.5px] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  {isDeleting ? 'Erasing…' : 'Erase Everything'}
-                </button>
-              </div>
+                return (
+                  <>
+                    <div className="space-y-1.5 pt-1">
+                      <label className="font-sans text-[12px] font-medium text-ios-secondary block">
+                        To confirm, please type your handle <strong className="font-mono text-ios-text">@{targetHandle}</strong>:
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteConfirmInput}
+                        onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                        placeholder={`@${targetHandle}`}
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        className="w-full bg-[#F2F2F7] text-ios-text font-mono text-[14px] px-3.5 py-2.5 rounded-xl border border-ios-separator/60 focus:border-[#DC2626] outline-none"
+                      />
+                    </div>
+
+                    {deleteError && (
+                      <div className="bg-red-50 text-[#DC2626] text-[12px] p-2.5 rounded-xl font-medium">
+                        {deleteError}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={isDeleting}
+                        onClick={() => {
+                          setShowDeleteModal(false);
+                          setDeleteConfirmInput('');
+                          setDeleteError(null);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-[#E5E5EA] text-ios-text font-sans font-semibold text-[13.5px] cursor-pointer disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isDeleting || !isDeleteConfirmed}
+                        onClick={async () => {
+                          setIsDeleting(true);
+                          setDeleteError(null);
+                          haptics.impact('heavy');
+                          const res = await dbDeleteMyAccount();
+                          if (res.ok) {
+                            setShowDeleteModal(false);
+                            onNavigate('/');
+                          } else {
+                            setIsDeleting(false);
+                            setDeleteError(res.error || 'Failed to erase account.');
+                            haptics.notification('error');
+                          }
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-[#DC2626] text-white font-sans font-semibold text-[13.5px] cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                      >
+                        {isDeleting ? 'Erasing…' : 'Erase Everything'}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </motion.div>
           </div>
         )}

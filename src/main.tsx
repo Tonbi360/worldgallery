@@ -4,6 +4,13 @@ import App from './App.tsx';
 import './index.css';
 import './lib/pwa';
 
+// Initialize saved theme
+try {
+  if (typeof window !== 'undefined' && localStorage.getItem('wg_theme') === 'dark') {
+    document.documentElement.classList.add('dark');
+  }
+} catch {}
+
 // Register PWA Service Worker
 if (typeof window !== 'undefined') {
   const registerServiceWorker = () => {

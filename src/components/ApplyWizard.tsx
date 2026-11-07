@@ -1108,7 +1108,7 @@ export default function ApplyWizard({ onNavigate, onBack }: ApplyWizardProps) {
                               onChange={(e) =>
                                 handleUpdateBridge(bridge.id, { customTypeName: e.target.value })
                               }
-                              placeholder="e.g. Snapchat, Mastodon, Matrix"
+                              placeholder="e.g. Signal, Session, Matrix"
                               autoCorrect="off"
                               spellCheck={false}
                               className="w-full bg-transparent border-0 outline-none font-sans text-[15px] text-ios-text placeholder:text-ios-secondary/40"

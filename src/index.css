@@ -56,6 +56,24 @@ html {
   width: 100%;
 }
 
+html.dark {
+  color-scheme: dark;
+  background-color: #000000;
+  color: #F2F2F7;
+  --color-ios-bg: #000000;
+  --color-ios-card: #1C1C1E;
+  --color-ios-text: #F2F2F7;
+  --color-ios-secondary: rgba(235, 235, 245, 0.6);
+  --color-ios-tertiary: rgba(235, 235, 245, 0.3);
+  --color-ios-separator: #38383A;
+  --color-ios-input-bg: #2C2C2E;
+}
+
+html.dark body {
+  background-color: #000000;
+  color: #F2F2F7;
+}
+
 body {
   background-color: #F2F2F7;
   color: #1C1C1E;

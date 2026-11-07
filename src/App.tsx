@@ -154,9 +154,6 @@ function AppContent() {
         if (accountState === 'member' || accountState === 'curator') {
           return <GalleryDirectory onNavigate={handleNavigate} />;
         }
-        if (accountState === 'pending') {
-          return <WaitingRoom onNavigate={handleNavigate} onBack={handleBack} />;
-        }
         return (
           <SignInPage
             onNavigate={handleNavigate}

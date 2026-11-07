@@ -1490,6 +1490,7 @@ async function handleCurator(req: any, res: any, slug: string[]) {
       avatarUrl: p.avatar_primary || '',
       photos: [p.avatar_primary, p.avatar_secondary].filter(Boolean) as string[],
       submittedAt: p.created_at,
+      appliedAt: p.created_at || new Date().toISOString(),
       status: 'pending',
       bridges: p.bridges || [],
     }));
@@ -1651,10 +1652,12 @@ async function handleCurator(req: any, res: any, slug: string[]) {
     const today = new Date().toISOString().slice(0, 10);
     const [activeRow] = await sql`SELECT COUNT(*)::int as count FROM profiles WHERE status = 'active'`;
     const [pendingRow] = await sql`SELECT COUNT(*)::int as count FROM profiles WHERE status = 'pending'`;
+    const [connRow] = await sql`SELECT COUNT(*)::int as count FROM connections WHERE status = 'approved'`;
     const [todayRow] = await sql`SELECT count FROM curator_daily_approvals WHERE date = ${today} LIMIT 1`;
     const statData = {
       activeCount: activeRow?.count || 0,
       pendingCount: pendingRow?.count || 0,
+      activeBridges: connRow?.count || 0,
       approvalsToday: todayRow?.count || 0,
       dailyCap: 10,
     };

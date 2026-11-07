@@ -130,7 +130,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
       setTelemetry({
         verifiedHumans: stats.activeCount,
         restingRequests: stats.pendingCount,
-        activeBridges: stats.activeCount * 2,
+        activeBridges: typeof stats.activeBridges === 'number' ? stats.activeBridges : stats.activeCount * 2,
         approvedToday: stats.approvalsToday,
         dailyCap: stats.dailyCap || 10,
       });
@@ -579,10 +579,13 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
                         <div className="flex items-center gap-1 text-ios-secondary font-sans text-[11.5px]">
                           <Clock className="w-3 h-3" />
                           <span>
-                            {new Date(app.appliedAt).toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
+                            {(() => {
+                              const rawDate = app.appliedAt || (app as any).submittedAt || (app as any).created_at;
+                              const parsed = rawDate ? new Date(rawDate) : null;
+                              return parsed && !isNaN(parsed.getTime())
+                                ? parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                : 'Recent';
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -617,7 +620,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
                             </span>
                             <div className="flex items-center gap-1 text-[12.5px] text-ios-secondary mt-0.5">
                               <MapPin className="w-3 h-3 text-ios-secondary/70 flex-shrink-0" />
-                              <span className="truncate">{app.location}</span>
+                              <span className="truncate">{app.location || 'Undisclosed'}</span>
                             </div>
                           </div>
                         </div>
@@ -625,21 +628,23 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
                         {/* Bio in Quiet Serif Italic */}
                         <div className="p-3 bg-[#F2F2F7]/60 rounded-xl border border-ios-separator/20">
                           <p className="font-serif italic text-[14px] text-ios-text/90 leading-relaxed">
-                            &ldquo;{app.bio}&rdquo;
+                            &ldquo;{app.bio || 'Craft and presence.'}&rdquo;
                           </p>
                         </div>
 
                         {/* Craft Discipline Tags */}
-                        <div className="flex flex-wrap gap-1.5">
-                          {app.tags.map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className="font-sans text-[11.5px] font-medium px-2.5 py-0.5 rounded-full bg-[#E5E5EA]/70 text-ios-secondary border border-ios-separator/30 capitalize"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
+                        {app.tags && app.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {app.tags.map((tag, idx) => (
+                              <span
+                                key={idx}
+                                className="font-sans text-[11.5px] font-medium px-2.5 py-0.5 rounded-full bg-[#E5E5EA]/70 text-ios-secondary border border-ios-separator/30 capitalize"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Studio Photos (if present) */}
                         {app.photos && app.photos.length > 1 && (
@@ -661,19 +666,26 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
 
                         {/* Contact Bridges Summary */}
                         {app.bridges && app.bridges.length > 0 && (
-                          <div className="pt-2 border-t border-ios-separator/30 space-y-1">
+                          <div className="pt-2 border-t border-ios-separator/30 space-y-1.5">
                             <span className="font-sans text-[11px] font-bold uppercase tracking-wider text-ios-secondary">
-                              Proposed Bridges
+                              Proposed Bridges ({app.bridges.length})
                             </span>
-                            <div className="flex flex-wrap gap-2 text-ios-secondary text-[12px] font-mono">
-                              {app.bridges.map((b, bIdx) => (
-                                <span
-                                  key={bIdx}
-                                  className="bg-white px-2 py-0.5 rounded border border-ios-separator/40"
-                                >
-                                  {b.label}: {b.unmaskedValue || b.maskedHint}
-                                </span>
-                              ))}
+                            <div className="flex flex-wrap gap-2 text-ios-secondary text-[12px]">
+                              {app.bridges.map((b: any, bIdx) => {
+                                const typeName = b.customTypeName || b.label || b.type || 'Bridge';
+                                const rawValue = b.value || b.unmaskedValue || b.maskedHint || '';
+                                return (
+                                  <span
+                                    key={bIdx}
+                                    className="inline-flex items-center gap-1.5 bg-[#F2F2F7] px-2.5 py-1 rounded-lg border border-ios-separator/40 font-mono text-[12px] text-ios-text"
+                                  >
+                                    <span className="font-sans font-semibold capitalize text-ios-forest">
+                                      {typeName}:
+                                    </span>
+                                    <span>{rawValue || 'Configured'}</span>
+                                  </span>
+                                );
+                              })}
                             </div>
                           </div>
                         )}

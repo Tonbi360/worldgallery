@@ -23,6 +23,7 @@ import {
 import { getPendingApplicants } from '../lib/curatorStore';
 import { getAllGalleryMembers, getCurrentUserProfile } from '../lib/userProfile';
 import { getAuthHeaders } from '../lib/dataService';
+import { useAuth } from '../lib/authContext';
 
 const DRAFT_STORAGE_KEY = 'wg_apply_draft_v1';
 const SUBMITTED_STORAGE_KEY = 'wg_submitted_applicant_v1';
@@ -43,6 +44,7 @@ interface WaitingRoomProps {
 }
 
 export default function WaitingRoom({ onNavigate, onBack, initialState }: WaitingRoomProps) {
+  const { signOut } = useAuth();
   // 1. Initial State resolution based on stored applicant or current session
   const [applicant, setApplicant] = useState<ApplyDraft>(() => {
     try {
@@ -473,8 +475,8 @@ export default function WaitingRoom({ onNavigate, onBack, initialState }: Waitin
                 )}
               </div>
 
-              {/* Check Status Subtle Button */}
-              <div className="pt-2 pb-2 flex flex-col items-center">
+              {/* Check Status & Switch Account subtle buttons */}
+              <div className="pt-2 pb-2 flex flex-col items-center gap-2.5">
                 <button
                   type="button"
                   onClick={handleCheckStatus}
@@ -485,6 +487,18 @@ export default function WaitingRoom({ onNavigate, onBack, initialState }: Waitin
                     className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin text-ios-forest' : ''}`}
                   />
                   <span>{isChecking ? 'Refreshing status...' : 'Check status'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    haptics.selection();
+                    await signOut();
+                    onNavigate('/signin');
+                  }}
+                  className="font-sans text-[12.5px] text-ios-secondary/70 hover:text-ios-text active:opacity-60 transition-colors py-1 cursor-pointer"
+                >
+                  Sign in with another account →
                 </button>
               </div>
             </motion.div>

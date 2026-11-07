@@ -246,9 +246,20 @@ export default function GalleryDirectory({
     >
       {/* 1. Header (No back button, left: WG seal mark, right: own avatar with dropdown menu) */}
       <header className="relative flex items-center justify-between w-full px-5 pt-3 pb-2 flex-shrink-0 z-30 bg-ios-bg max-w-2xl mx-auto">
-        {/* Left: WG Seal Mark */}
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-ios-forest text-white flex items-center justify-center shadow-2xs">
+        {/* Left: WG Seal Mark (Tapping toggles Dark Mode) */}
+        <button
+          type="button"
+          onClick={() => {
+            haptics.impact('light');
+            const isDark = document.documentElement.classList.toggle('dark');
+            try {
+              localStorage.setItem('wg_theme', isDark ? 'dark' : 'light');
+            } catch {}
+          }}
+          title="Toggle Dark Mode"
+          className="flex items-center gap-2 group cursor-pointer active:scale-95 transition-transform"
+        >
+          <div className="w-8 h-8 rounded-full bg-ios-forest text-white flex items-center justify-center shadow-2xs group-hover:opacity-90">
             <span className="font-serif font-bold text-[14px] tracking-tighter">
               WG
             </span>
@@ -256,7 +267,7 @@ export default function GalleryDirectory({
           <span className="font-serif font-semibold text-[15.5px] tracking-tight text-ios-text hidden sm:inline">
             World Gallery
           </span>
-        </div>
+        </button>
 
         {/* Right: Own Avatar Button with Menu */}
         <div className="relative">
