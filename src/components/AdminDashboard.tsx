@@ -70,15 +70,9 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
   const [activeTab, setActiveTab] = useState<AdminTab>('queue');
 
   // Data States
-  const [applicants, setApplicants] = useState<PendingApplicant[]>([]);
-  const [seals, setSeals] = useState<InviteSeal[]>([]);
-  const [telemetry, setTelemetry] = useState<CuratorTelemetry>({
-    verifiedHumans: 0,
-    restingRequests: 0,
-    activeBridges: 0,
-    approvedToday: 0,
-    dailyCap: 10,
-  });
+  const [applicants, setApplicants] = useState<PendingApplicant[]>(getPendingApplicants);
+  const [seals, setSeals] = useState<InviteSeal[]>(getInviteSeals);
+  const [telemetry, setTelemetry] = useState<CuratorTelemetry>(getCuratorTelemetry);
 
   // Decline Modal Sheet State
   const [decliningApplicant, setDecliningApplicant] = useState<PendingApplicant | null>(null);
@@ -97,7 +91,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
   const refreshData = async () => {
     try {
       const dbApps = await fetchPendingApplicantsFromDb();
-      if (dbApps && dbApps.length >= 0) {
+      if (dbApps && dbApps.length > 0) {
         setApplicants(dbApps);
       } else {
         setApplicants(getPendingApplicants());
@@ -108,7 +102,7 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
 
     try {
       const serverSeals = await dbGetInviteSeals();
-      if (serverSeals && serverSeals.length >= 0) {
+      if (serverSeals && serverSeals.length > 0) {
         setSeals(
           serverSeals.map((s) => ({
             id: s.id,
@@ -127,13 +121,18 @@ export default function AdminDashboard({ onNavigate, onBack }: AdminDashboardPro
 
     try {
       const stats = await dbGetCuratorStats();
-      setTelemetry({
-        verifiedHumans: stats.activeCount,
-        restingRequests: stats.pendingCount,
-        activeBridges: typeof stats.activeBridges === 'number' ? stats.activeBridges : stats.activeCount * 2,
-        approvedToday: stats.approvalsToday,
-        dailyCap: stats.dailyCap || 10,
-      });
+      const local = getCuratorTelemetry();
+      if (stats && (stats.activeCount > 0 || stats.pendingCount > 0 || (typeof stats.activeBridges === 'number' && stats.activeBridges > 0))) {
+        setTelemetry({
+          verifiedHumans: stats.activeCount,
+          restingRequests: stats.pendingCount,
+          activeBridges: typeof stats.activeBridges === 'number' ? stats.activeBridges : (stats.activeCount * 2 || local.activeBridges),
+          approvedToday: stats.approvalsToday,
+          dailyCap: stats.dailyCap || 10,
+        });
+      } else {
+        setTelemetry(local);
+      }
     } catch {
       setTelemetry(getCuratorTelemetry());
     }

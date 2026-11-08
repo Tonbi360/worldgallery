@@ -492,7 +492,7 @@ export async function dbGetCuratorStats(): Promise<{
   activeBridges?: number;
   approvalsToday: number;
   dailyCap: number;
-}> {
+} | null> {
   try {
     const res = await fetch('/api/curator/stats', {
       credentials: 'include',
@@ -505,6 +505,6 @@ export async function dbGetCuratorStats(): Promise<{
   } catch {
     // fallback
   }
-  return { activeCount: 0, pendingCount: 0, activeBridges: 0, approvalsToday: 0, dailyCap: 10 };
+  return null;
 }
 
