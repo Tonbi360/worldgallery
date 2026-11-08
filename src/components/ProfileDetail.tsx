@@ -196,7 +196,7 @@ export default function ProfileDetail({
       className="relative flex flex-col w-full h-[100dvh] bg-ios-bg text-ios-text select-none"
     >
       {/* 1. Header (‹ Gallery in blue, NO share button, right side empty) */}
-      <header className="sticky top-0 z-30 flex items-center justify-between w-full px-5 pt-3 pb-2.5 bg-ios-bg/95 backdrop-blur-md border-b border-ios-separator/20 max-w-lg mx-auto flex-shrink-0">
+      <header className="sticky top-0 z-30 flex items-center justify-between w-full px-5 pt-3 pb-2.5 bg-ios-bg/95 dark:bg-black/95 backdrop-blur-md border-b border-ios-separator/20 dark:border-white/10 max-w-lg mx-auto flex-shrink-0">
         <button
           type="button"
           onClick={() => {
@@ -211,28 +211,27 @@ export default function ProfileDetail({
         <div className="w-8" />
       </header>
 
-      {/* 2. Privacy Toast Banner */}
-      <AnimatePresence>
-        {showToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-            className="w-full px-5 pb-1 max-w-lg mx-auto z-20"
-          >
-            <div className="bg-ios-card/95 backdrop-blur-md rounded-xl p-2.5 px-3.5 shadow-sm border border-ios-separator/40 flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5 text-ios-forest flex-shrink-0" />
-              <p className="font-sans text-[12.5px] text-ios-secondary leading-tight">
-                🔒 Privacy first — details stay masked until mutual consent.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 3. Scrollable Content Body */}
+      {/* 2. Scrollable Content Body */}
       <div className="relative flex-1 w-full overflow-y-auto overflow-x-hidden px-5 pt-3 pb-36 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden max-w-lg mx-auto space-y-4 overscroll-contain touch-pan-y">
+        {/* Privacy Toast Banner (inside scroll container to scroll naturally without awkward overflow) */}
+        <AnimatePresence>
+          {showToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25 }}
+              className="w-full pb-1 z-20"
+            >
+              <div className="bg-ios-card dark:bg-[#1C1C1E] rounded-xl p-2.5 px-3.5 shadow-sm border border-ios-separator/40 dark:border-white/10 flex items-center gap-2">
+                <Lock className="w-3.5 h-3.5 text-ios-forest dark:text-[#52B788] flex-shrink-0" />
+                <p className="font-sans text-[12.5px] text-ios-secondary dark:text-white/70 leading-tight">
+                  🔒 Privacy first — details stay masked until mutual consent.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {isLoading ? (
           /* Reusable Skeleton View */
           <div className="flex flex-col items-center space-y-4 pt-2">
@@ -479,7 +478,7 @@ export default function ProfileDetail({
 
       {/* 4. Fixed Bottom Action Bar */}
       {!isLoading && member && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom,1.25rem))] bg-gradient-to-t from-ios-bg via-ios-bg/95 to-transparent z-30 max-w-lg mx-auto pointer-events-auto">
+        <div className="fixed bottom-0 left-0 right-0 p-4 pb-[max(1.25rem,env(safe-area-inset-bottom,1.25rem))] bg-gradient-to-t from-ios-bg via-ios-bg/95 to-transparent dark:from-black dark:via-black/95 dark:to-transparent z-30 max-w-lg mx-auto pointer-events-auto">
           {isSelf ? (
             <button
               type="button"

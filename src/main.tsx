@@ -6,8 +6,17 @@ import './lib/pwa';
 
 // Initialize saved theme
 try {
-  if (typeof window !== 'undefined' && localStorage.getItem('wg_theme') === 'dark') {
-    document.documentElement.classList.add('dark');
+  if (typeof window !== 'undefined') {
+    const isDark = localStorage.getItem('wg_theme') === 'dark';
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      const m = document.getElementById('theme-color-meta');
+      if (m) m.setAttribute('content', '#000000');
+    } else {
+      document.documentElement.classList.remove('dark');
+      const m = document.getElementById('theme-color-meta');
+      if (m) m.setAttribute('content', '#F2F2F7');
+    }
   }
 } catch {}
 

@@ -12,6 +12,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   FileText,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { haptics } from '../lib/haptics';
 import { isStandaloneMode, canPromptNativeInstall, promptPWAInstall, isIosSafari } from '../lib/pwa';
@@ -43,6 +45,25 @@ export default function AvatarMenu({
   const [hasPrompt, setHasPrompt] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [userProfile, setUserProfile] = useState<GalleryMember>(getCurrentUserProfile());
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  const handleToggleTheme = () => {
+    haptics.impact('light');
+    const nextDark = document.documentElement.classList.toggle('dark');
+    setIsDark(nextDark);
+    try {
+      localStorage.setItem('wg_theme', nextDark ? 'dark' : 'light');
+      const m = document.getElementById('theme-color-meta');
+      if (m) m.setAttribute('content', nextDark ? '#000000' : '#F2F2F7');
+      const s = document.getElementById('apple-status-meta');
+      if (s) s.setAttribute('content', nextDark ? 'black-translucent' : 'default');
+    } catch {}
+  };
 
   // Security Check: The Curator Desk row is strictly restricted to verified curator sessions
   const isCurator = isAuthCurator || (() => {
@@ -343,6 +364,25 @@ export default function AvatarMenu({
                     </span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-ios-secondary/50 dark:text-white/40" />
+                </button>
+
+                {/* 7. Appearance Theme Row */}
+                <button
+                  type="button"
+                  onClick={handleToggleTheme}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] active:bg-[#E5E5EA] dark:active:bg-[#3A3A3C] transition-colors cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#8E8E93]/15 text-ios-secondary dark:text-white/70 flex items-center justify-center">
+                      {isDark ? <Moon className="w-4 h-4 text-[#52B788]" /> : <Sun className="w-4 h-4 text-amber-500" />}
+                    </div>
+                    <span className="font-sans font-medium text-[14px] text-ios-text dark:text-white">
+                      Appearance
+                    </span>
+                  </div>
+                  <span className="font-sans text-[12px] font-semibold text-ios-secondary dark:text-white/70 bg-[#F2F2F7] dark:bg-[#2C2C2E] px-2.5 py-0.5 rounded-full">
+                    {isDark ? 'Dark' : 'Light'}
+                  </span>
                 </button>
               </div>
 

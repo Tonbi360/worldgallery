@@ -9,9 +9,9 @@
     <meta property="og:description" content="A member-only human registry and high-trust directory built as a native iOS-style PWA." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#F2F2F7" />
+    <meta name="theme-color" content="#F2F2F7" id="theme-color-meta" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" id="apple-status-meta" />
     <meta name="apple-mobile-web-app-title" content="World Gallery" />
     <meta name="application-name" content="World Gallery" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -23,6 +23,18 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
     <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('wg_theme');
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+            var m = document.getElementById('theme-color-meta');
+            if (m) m.setAttribute('content', '#000000');
+            var s = document.getElementById('apple-status-meta');
+            if (s) s.setAttribute('content', 'black-translucent');
+          }
+        } catch(e) {}
+      })();
       // Early SW registration
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(err) {
@@ -39,6 +51,10 @@
         background-color: #F2F2F7;
         overflow: hidden;
       }
+      html.dark, html.dark body {
+        background-color: #000000;
+        color: #FFFFFF;
+      }
       #static-splash {
         position: fixed;
         inset: 0;
@@ -48,6 +64,9 @@
         background-color: #F2F2F7;
         z-index: 9999;
         transition: opacity 200ms ease-out;
+      }
+      html.dark #static-splash {
+        background-color: #000000;
       }
       #static-splash.fade-out {
         opacity: 0;

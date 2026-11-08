@@ -254,6 +254,10 @@ export default function GalleryDirectory({
             const isDark = document.documentElement.classList.toggle('dark');
             try {
               localStorage.setItem('wg_theme', isDark ? 'dark' : 'light');
+              const m = document.getElementById('theme-color-meta');
+              if (m) m.setAttribute('content', isDark ? '#000000' : '#F2F2F7');
+              const s = document.getElementById('apple-status-meta');
+              if (s) s.setAttribute('content', isDark ? 'black-translucent' : 'default');
             } catch {}
           }}
           title="Toggle Dark Mode"
@@ -361,7 +365,7 @@ export default function GalleryDirectory({
         </div>
 
         {/* Segmented Availability Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5 pr-6">
           {/* All */}
           <button
             type="button"
@@ -531,8 +535,8 @@ export default function GalleryDirectory({
                       className="relative scroll-mt-2"
                     >
                       {/* Sticky Letter Header: Forest Green SERIF ~20px museum-marker style */}
-                      <div className="sticky top-0 z-10 bg-ios-bg/95 backdrop-blur-xs py-1.5 mb-1 px-1">
-                        <span className="font-serif font-bold text-[20px] text-ios-forest tracking-tight">
+                      <div className="sticky top-0 z-10 bg-ios-bg/95 dark:bg-black/95 backdrop-blur-xs py-1.5 mb-1 px-1">
+                        <span className="font-serif font-bold text-[20px] text-ios-forest dark:text-[#52B788] tracking-tight">
                           {letter}
                         </span>
                       </div>
@@ -576,10 +580,10 @@ export default function GalleryDirectory({
                   key={letter}
                   className={`font-sans text-[10px] font-bold transition-all ${
                     isActive
-                      ? 'text-ios-forest scale-130 font-black'
+                      ? 'text-ios-forest dark:text-[#52B788] scale-130 font-black'
                       : hasMembers
-                      ? 'text-ios-secondary/80 hover:text-ios-text'
-                      : 'text-ios-secondary/25'
+                      ? 'text-ios-secondary/80 dark:text-white/70 hover:text-ios-text dark:hover:text-white'
+                      : 'text-ios-secondary/25 dark:text-white/20'
                   }`}
                 >
                   {letter}

@@ -274,10 +274,10 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-full min-h-[100dvh] bg-ios-bg text-ios-text font-sans selection:bg-ios-blue/20 selection:text-ios-blue">
+    <div className="min-h-full min-h-[100dvh] bg-ios-bg dark:bg-black text-ios-text dark:text-white font-sans selection:bg-ios-blue/20 selection:text-ios-blue">
       <div
         id="ios-app-root"
-        className="relative flex flex-col min-h-[100dvh] w-full max-w-md mx-auto overflow-hidden bg-ios-bg shadow-sm"
+        className="relative flex flex-col min-h-[100dvh] w-full max-w-md mx-auto overflow-hidden bg-ios-bg dark:bg-black shadow-sm"
       >
         <motion.div
           key={currentPath.split('?')[0]}
